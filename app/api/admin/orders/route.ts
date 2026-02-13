@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import { db } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 // GET: Fetch all paid orders (deposit_confirmed status) ready for item delivery
 export async function GET(request: NextRequest) {
   try {

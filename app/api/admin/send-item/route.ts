@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import { db } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 // POST: Send item to buyer's inbox
 export async function POST(request: NextRequest) {
   try {

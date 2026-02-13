@@ -1,11 +1,18 @@
 import fs from 'fs';
 import path from 'path';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Use /tmp on Vercel (serverless), use ./data locally
+const DATA_DIR = process.env.VERCEL 
+  ? '/tmp/data' 
+  : path.join(process.cwd(), 'data');
 
 // Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (error) {
+  console.error('Failed to create data directory:', error);
 }
 
 interface User {
