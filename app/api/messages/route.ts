@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get other item delivery messages (items sent by admin)
-    itemMessages.filter(m => !m.id.startsWith('welcome_')).forEach(itemMsg => {
+    itemMessages.filter((m: any) => !m.id.startsWith('welcome_')).forEach((itemMsg: any) => {
       messages.push({
         id: `item-${itemMsg.id}`,
         title: `📦 Item Delivery: ${itemMsg.productName}`,
@@ -59,11 +59,11 @@ export async function GET(request: NextRequest) {
     // Get user's transactions to build other messages
     const transactions = await db.getTransactions();
     const userTransactions = transactions.filter(
-      t => t.buyerId === decoded.userId || t.sellerId === decoded.userId
+      (t: any) => t.buyerId === decoded.userId || t.sellerId === decoded.userId
     );
 
     // Build messages from transactions
-    userTransactions.forEach(async tx => {
+    userTransactions.forEach(async (tx: any) => {
       const product = await db.getProductById(tx.productId);
       
       if (tx.buyerId === decoded.userId) {

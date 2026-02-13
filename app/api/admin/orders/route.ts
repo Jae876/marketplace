@@ -14,10 +14,10 @@ export async function GET(request: NextRequest) {
 
     // Get all transactions in paid status (payment received, awaiting item delivery)
     const transactions = await db.getTransactions();
-    const paidOrders = transactions.filter(t => t.status === 'paid' || t.status === 'deposit_confirmed');
+    const paidOrders = transactions.filter((t: any) => t.status === 'paid' || t.status === 'deposit_confirmed');
 
     // Build order details with buyer and product info
-    const ordersWithDetails = await Promise.all(paidOrders.map(async tx => {
+    const ordersWithDetails = await Promise.all(paidOrders.map(async (tx: any) => {
       const buyer = await db.getUserById(tx.buyerId);
       const product = await db.getProductById(tx.productId);
       

@@ -32,13 +32,12 @@ export async function GET(req: NextRequest) {
         { status: 404 }
       );
     }
-
     // Calculate current stats
     const completedTransactions = (await db.getTransactions()).filter(
-      t => (t.buyerId === user.id || t.sellerId === user.id) && t.status === 'completed'
+      (t: any) => (t.buyerId === user.id || t.sellerId === user.id) && t.status === 'completed'
     );
 
-    const totalBalance = completedTransactions.reduce((sum, t) => {
+    const totalBalance = completedTransactions.reduce((sum: number, t: any) => {
       if (t.buyerId === user.id) {
         return sum + t.amount;
       }

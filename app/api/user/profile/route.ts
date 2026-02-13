@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     
     // Calculate trust score based on completed transactions
     const completedTransactions = (await db.getUserTransactions(decoded.userId))
-      .filter(t => t.status === 'completed' && t.buyerId === decoded.userId);
+      .filter((t: any) => t.status === 'completed' && t.buyerId === decoded.userId);
     
     let trustScore = 0;
     if (completedTransactions.length > 0) {

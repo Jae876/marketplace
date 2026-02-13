@@ -17,14 +17,14 @@ export async function GET(req: NextRequest) {
 
     // Filter by region
     if (region) {
-      products = products.filter(p => 
+      products = products.filter((p: any) => 
         p.region.toLowerCase().includes(region.toLowerCase())
       );
     }
 
     // Filter by type
     if (type) {
-      products = products.filter(p => 
+      products = products.filter((p: any) => 
         p.type.toLowerCase().includes(type.toLowerCase())
       );
     }
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     // Search by name/description
     if (search) {
       const searchLower = search.toLowerCase();
-      products = products.filter(p =>
+      products = products.filter((p: any) =>
         p.name.toLowerCase().includes(searchLower) ||
         p.description.toLowerCase().includes(searchLower)
       );
