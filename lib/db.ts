@@ -642,18 +642,101 @@ class DatabaseWrapper {
   }
 
   // Wallet config
-  getWalletConfig(): WalletConfig {
+  async getWalletConfig(): Promise<WalletConfig> {
     if (this.isAsync) {
-      throw new Error('Wallet config not supported with PostgreSQL');
+      return await this.backend.getWalletConfig();
+    } else {
+      return this.backend.getWalletConfig();
     }
-    return this.backend.getWalletConfig();
   }
 
-  updateWalletConfig(config: Partial<WalletConfig>): void {
+  async updateWalletConfig(config: Partial<WalletConfig>): Promise<void> {
     if (this.isAsync) {
-      throw new Error('Wallet config not supported with PostgreSQL');
+      return await this.backend.updateWalletConfig(config);
+    } else {
+      this.backend.updateWalletConfig(config);
     }
-    this.backend.updateWalletConfig(config);
+  }
+
+  // Additional query methods
+  async getUserById(id: string): Promise<any | null> {
+    if (this.isAsync) {
+      return await this.backend.getUserById(id);
+    } else {
+      return this.backend.getUserById(id);
+    }
+  }
+
+  async getTransactionById(id: string): Promise<any | null> {
+    if (this.isAsync) {
+      return await this.backend.getTransactionById(id);
+    } else {
+      return this.backend.getTransactionById(id);
+    }
+  }
+
+  async getTransactions(): Promise<any[]> {
+    if (this.isAsync) {
+      return await this.backend.getTransactions();
+    } else {
+      return this.backend.getTransactions();
+    }
+  }
+
+  async getUserItemMessages(userId: string): Promise<any[]> {
+    if (this.isAsync) {
+      return await this.backend.getUserItemMessages(userId);
+    } else {
+      return this.backend.getUserItemMessages(userId);
+    }
+  }
+
+  async markItemMessageAsRead(messageId: string): Promise<boolean> {
+    if (this.isAsync) {
+      return await this.backend.markItemMessageAsRead(messageId);
+    } else {
+      return this.backend.markItemMessageAsRead(messageId);
+    }
+  }
+
+  async getUserBalance(userId: string): Promise<number> {
+    if (this.isAsync) {
+      return await this.backend.getUserBalance(userId);
+    } else {
+      return this.backend.getUserBalance(userId);
+    }
+  }
+
+  async getRecentDeposits(userId: string, hours: number = 24): Promise<number> {
+    if (this.isAsync) {
+      return await this.backend.getRecentDeposits(userId, hours);
+    } else {
+      return this.backend.getRecentDeposits(userId, hours);
+    }
+  }
+
+  async getRegions(): Promise<string[]> {
+    if (this.isAsync) {
+      return await this.backend.getRegions();
+    } else {
+      return this.backend.getRegions();
+    }
+  }
+
+  async getTypes(): Promise<string[]> {
+    if (this.isAsync) {
+      return await this.backend.getTypes();
+    } else {
+      return this.backend.getTypes();
+    }
+  }
+
+  async getSizes(): Promise<string[]> {
+    if (this.isAsync) {
+      return await this.backend.getSizes();
+    } else {
+      return this.backend.getSizes();
+    }
   }
 }
 

@@ -87,6 +87,14 @@ async function initializeTables() {
       );
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallet_config (
+        id SERIAL PRIMARY KEY,
+        config JSONB DEFAULT '{}',
+        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     tablesInitialized = true;
     console.log('[POSTGRES] Tables initialized successfully');
   } catch (error: any) {
@@ -152,6 +160,10 @@ interface Wallet {
   address: string;
   balance: number;
   createdAt: string;
+}
+
+interface WalletConfig {
+  [key: string]: string; // Support all 130+ cryptocurrencies dynamically
 }
 
 export class PostgresDatabase {
@@ -399,6 +411,103 @@ export class PostgresDatabase {
     await initializeTables();
     const result = await pool.query('SELECT * FROM wallets');
     return result.rows;
+  }
+
+  // Additional helper methods for compatibility
+  async getUserById(id: string): Promise<User | null> {
+    return await this.getUser(id);
+  }
+
+  async getTransactionById(id: string): Promise<Transaction | null> {
+    return await this.getTransaction(id);
+  }
+
+  async getTransactions(): Promise<Transaction[]> {
+    return await this.getAllTransactions();
+  }
+
+  async getUserTransactions(userId: string): Promise<Transaction[]> {
+    return await this.getTransactionsByUser(userId);
+  }
+
+  async getUserItemMessages(userId: string): Promise<ItemMessage[]> {
+    return await this.getItemMessages(userId);
+  }
+
+  async markItemMessageAsRead(messageId: string): Promise<boolean> {
+    await initializeTables();
+    try {
+      await pool.query('UPDATE item_messages SET "isRead" = true WHERE id = $1', [messageId]);
+      return true;
+    } catch (error) {
+      console.error('[POSTGRES] Error marking message as read:', error);
+      return false;
+    }
+  }
+
+  async getUserBalance(userId: string): Promise<number> {
+    await initializeTables();
+    const result = await pool.query(
+      'SELECT balance FROM users WHERE id = $1',
+      [userId]
+    );
+    return result.rows[0]?.balance || 0;
+  }
+
+  async getRecentDeposits(userId: string, hours: number = 24): Promise<number> {
+    await initializeTables();
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+    const result = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM transactions 
+       WHERE "buyerId" = $1 AND "createdAt" > $2 AND status = 'completed'`,
+      [userId, since]
+    );
+    return parseFloat(result.rows[0]?.total) || 0;
+  }
+
+  async getRegions(): Promise<string[]> {
+    // Return hardcoded regions for now (same as JSON version)
+    return ['North America', 'South America', 'Europe', 'Asia', 'Africa', 'Oceania'];
+  }
+
+  async getTypes(): Promise<string[]> {
+    // Return hardcoded types for now (same as JSON version)
+    return ['Account', 'Service', 'Digital Product', 'Physical Product', 'License', 'Subscription'];
+  }
+
+  async getSizes(): Promise<string[]> {
+    // Return hardcoded sizes for now (same as JSON version)
+    return ['1', '5', '10', '25', '50', '100', 'Unlimited'];
+  }
+
+  // Wallet configuration methods - stored in a dedicated table
+  async getWalletConfig(): Promise<WalletConfig> {
+    await initializeTables();
+    try {
+      const result = await pool.query('SELECT config FROM wallet_config LIMIT 1');
+      return result.rows[0]?.config || {};
+    } catch (error) {
+      console.error('[POSTGRES] Error getting wallet config:', error);
+      return {};
+    }
+  }
+
+  async updateWalletConfig(config: Partial<WalletConfig>): Promise<void> {
+    await initializeTables();
+    try {
+      // First check if config exists
+      const existing = await pool.query('SELECT 1 FROM wallet_config LIMIT 1');
+      
+      if (existing.rows.length > 0) {
+        // Update existing
+        await pool.query('UPDATE wallet_config SET config = $1', [JSON.stringify(config)]);
+      } else {
+        // Create new
+        await pool.query('INSERT INTO wallet_config (config) VALUES ($1)', [JSON.stringify(config)]);
+      }
+    } catch (error) {
+      console.error('[POSTGRES] Error updating wallet config:', error);
+    }
   }
 }
 
