@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { verifyAdminSession } from '@/lib/auth';
 import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -7,15 +7,8 @@ export const dynamic = 'force-dynamic';
 // POST: Send item to buyer's inbox
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.slice(7);
-    const decoded = verifyToken(token);
-
-    if (!decoded?.userId) {
+    // Verify admin session from httpOnly cookie
+    if (!verifyAdminSession(request)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

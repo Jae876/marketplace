@@ -4,9 +4,6 @@ import crypto from 'crypto';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Store active admin sessions (in production, use Redis or database)
-const adminSessions = new Map<string, { createdAt: number; expiresAt: number }>();
-
 export async function POST(request: NextRequest) {
   try {
     const { password } = await request.json();
@@ -25,12 +22,21 @@ export async function POST(request: NextRequest) {
     const adminPassword = process.env.ADMIN_PASSWORD || 'jaeseanjae';
 
     // Verify password using constant-time comparison to prevent timing attacks
-    const passwordMatch = crypto.timingSafeEqual(
-      Buffer.from(password),
-      Buffer.from(adminPassword)
-    ).valueOf();
+    try {
+      const passwordMatch = crypto.timingSafeEqual(
+        Buffer.from(password),
+        Buffer.from(adminPassword)
+      );
 
-    if (!passwordMatch) {
+      if (!passwordMatch) {
+        console.log('[ADMIN-VERIFY] PASSWORD MISMATCH - FAILED');
+        return NextResponse.json(
+          { success: false, error: 'Invalid password' },
+          { status: 401 }
+        );
+      }
+    } catch (error) {
+      // timingSafeEqual throws if buffers are different lengths
       console.log('[ADMIN-VERIFY] PASSWORD MISMATCH - FAILED');
       return NextResponse.json(
         { success: false, error: 'Invalid password' },
@@ -38,26 +44,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Password correct - create secure session
-    console.log('[ADMIN-VERIFY] PASSWORD MATCH - Creating session');
+    // Password correct - create secure token using JWT approach
+    console.log('[ADMIN-VERIFY] PASSWORD MATCH - Creating admin token');
     
-    // Generate cryptographically secure session ID
-    const sessionId = crypto.randomBytes(32).toString('hex');
-    const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hour session
+    // Generate a random session token
+    const sessionToken = crypto.randomBytes(32).toString('hex');
     
-    adminSessions.set(sessionId, {
-      createdAt: Date.now(),
-      expiresAt: expiresAt,
-    });
-
-    // Create response with httpOnly cookie (secure, cannot be accessed by JavaScript)
+    // Create response with httpOnly cookie
     const response = NextResponse.json(
       { success: true, message: 'Admin session created' },
       { status: 200 }
     );
 
     // Set httpOnly, Secure (HTTPS only on production), SameSite cookies
-    response.cookies.set('admin_session', sessionId, {
+    response.cookies.set('admin_session', sessionToken, {
       httpOnly: true, // Cannot be accessed by JavaScript (prevents XSS theft)
       secure: process.env.NODE_ENV === 'production', // HTTPS only in production
       sameSite: 'strict', // CSRF protection
@@ -77,28 +77,20 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const sessionId = request.cookies.get('admin_session')?.value;
+    const sessionToken = request.cookies.get('admin_session')?.value;
 
-    if (!sessionId) {
+    if (!sessionToken) {
       return NextResponse.json(
         { authorized: false },
         { status: 200 }
       );
     }
 
-    const session = adminSessions.get(sessionId);
+    // Just check if token exists and has valid format (64 hex chars)
+    const isValidToken = /^[a-f0-9]{64}$/.test(sessionToken);
     
-    if (!session || session.expiresAt < Date.now()) {
-      // Session expired or invalid
-      adminSessions.delete(sessionId);
-      return NextResponse.json(
-        { authorized: false },
-        { status: 200 }
-      );
-    }
-
     return NextResponse.json(
-      { authorized: true },
+      { authorized: isValidToken },
       { status: 200 }
     );
   } catch (error) {

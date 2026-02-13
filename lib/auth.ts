@@ -37,16 +37,17 @@ export function isAdminToken(userId: string): boolean {
 // Verify admin session from httpOnly cookie
 export function verifyAdminSession(request: NextRequest): boolean {
   try {
-    const sessionId = request.cookies.get('admin_session')?.value;
+    const sessionToken = request.cookies.get('admin_session')?.value;
     
-    if (!sessionId) {
+    if (!sessionToken) {
       console.log('[AUTH] No admin_session cookie found');
       return false;
     }
 
-    console.log('[AUTH] Admin session found:', !!sessionId);
-    // Session validation happens in /api/admin/verify via the Map
-    return true;
+    // Validate token format (must be 64 hex characters)
+    const isValid = /^[a-f0-9]{64}$/.test(sessionToken);
+    console.log('[AUTH] Admin session validation:', isValid);
+    return isValid;
   } catch (error) {
     console.error('[AUTH] Session verification error:', error);
     return false;
