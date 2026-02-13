@@ -26,15 +26,19 @@ export default function AdminLoginPage() {
 
     try {
       // Call a verification API instead of checking locally
+      console.log('[ADMIN-LOGIN] Sending password to verify API');
       const response = await fetch('/api/admin/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       });
 
+      console.log('[ADMIN-LOGIN] Response status:', response.status);
       const data = await response.json();
+      console.log('[ADMIN-LOGIN] Response data:', data);
 
       if (response.ok && data.success) {
+        console.log('[ADMIN-LOGIN] SUCCESS - Redirecting to admin');
         // Successful login - clear failed attempts
         localStorage.removeItem('adminFailedAttempts');
         localStorage.removeItem('adminBlocked');
@@ -42,6 +46,7 @@ export default function AdminLoginPage() {
         localStorage.setItem('adminPassword', password);
         router.push('/admin');
       } else {
+        console.log('[ADMIN-LOGIN] FAILED - Invalid password response');
         // Failed attempt
         const newAttempts = failedAttempts + 1;
         setFailedAttempts(newAttempts);
@@ -67,6 +72,7 @@ export default function AdminLoginPage() {
         }
       }
     } catch (err) {
+      console.error('[ADMIN-LOGIN] Catch error:', err);
       setError('Login failed - server error');
     } finally {
       setLoading(false);
