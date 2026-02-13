@@ -302,10 +302,21 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
               {/* Footer */}
               <div className="border-t border-slate-700/50 px-8 py-4 bg-slate-950/50 flex justify-end gap-3">
                 <button
-                  onClick={() => setShowWelcomeModal(false)}
-                  className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-medium transition-all"
+                  onClick={() => {
+                    setShowWelcomeModal(false);
+                  }}
+                  className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg font-medium transition-all"
                 >
-                  Got it! Start Exploring
+                  No, Dismiss
+                </button>
+                <button
+                  onClick={() => {
+                    setShowWelcomeModal(false);
+                    markAsRead('welcome-' + messages[0]?.id.split('-')[1]);
+                  }}
+                  className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-medium transition-all"
+                >
+                  Yes, I Accept
                 </button>
               </div>
             </div>
@@ -331,22 +342,16 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
         </div>
       )}
 
-      {/* Welcome Message Modal - Auto-opens for new users (only if logged in) */}
+      {/* Welcome Message Modal - Auto-opens for new users (only if logged in) - BLOCKING MODAL */}
       {isLoggedIn && showWelcomeModal && messages.length > 0 && messages[0].id.startsWith('welcome-') && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 pointer-events-auto">
+          <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto">
             {/* Header */}
-            <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 px-6 py-4 border-b border-slate-700/50">
               <div>
                 <h2 className="text-2xl font-semibold text-white">👋 Welcome to Russian Roulette</h2>
-                <p className="text-xs text-slate-400 mt-1">New user guide</p>
+                <p className="text-xs text-slate-400 mt-1">Please review our guidelines before proceeding</p>
               </div>
-              <button
-                onClick={() => setShowWelcomeModal(false)}
-                className="text-slate-500 hover:text-slate-300 text-2xl w-10 h-10 rounded-full hover:bg-slate-800/50 transition-all flex items-center justify-center"
-              >
-                ✕
-              </button>
             </div>
 
             {/* Content */}
