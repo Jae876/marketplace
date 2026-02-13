@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const user = db.getUserById(decoded.userId);
+    const user = await db.getUserById(decoded.userId);
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -34,13 +34,13 @@ export async function GET(req: NextRequest) {
     }
 
     // Calculate balance from completed transactions
-    const balance = db.getUserBalance(decoded.userId);
+    const balance = await db.getUserBalance(decoded.userId);
     
     // Get recent deposits (completed transactions in last 24 hours)
-    const recentDeposits = db.getRecentDeposits(decoded.userId, 24);
+    const recentDeposits = await db.getRecentDeposits(decoded.userId, 24);
     
     // Calculate trust score based on completed transactions
-    const completedTransactions = db.getUserTransactions(decoded.userId)
+    const completedTransactions = (await db.getUserTransactions(decoded.userId))
       .filter(t => t.status === 'completed' && t.buyerId === decoded.userId);
     
     let trustScore = 0;
@@ -99,7 +99,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const user = db.getUserById(decoded.userId);
+    const user = await db.getUserById(decoded.userId);
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -112,7 +112,7 @@ export async function PUT(req: NextRequest) {
 
     // Check if username is taken by another user
     if (username && username !== user.username) {
-      const existingUser = db.getUserByUsername(username);
+      const existingUser = await db.getUserByUsername(username);
       if (existingUser && existingUser.id !== user.id) {
         return NextResponse.json(
           { error: 'Username already taken' },
@@ -123,7 +123,7 @@ export async function PUT(req: NextRequest) {
 
     // Check if email is taken by another user
     if (email && email !== user.email) {
-      const existingUser = db.getUserByEmail(email);
+      const existingUser = await db.getUserByEmail(email);
       if (existingUser && existingUser.id !== user.id) {
         return NextResponse.json(
           { error: 'Email already taken' },
@@ -133,21 +133,14 @@ export async function PUT(req: NextRequest) {
     }
 
     // Update user using database method
-    const success = db.updateUser(user.id, {
+    await db.updateUser(user.id, {
       firstName: firstName || user.firstName,
       lastName: lastName || user.lastName,
       username: username || user.username,
       email: email || user.email,
     });
 
-    if (!success) {
-      return NextResponse.json(
-        { error: 'Failed to update user' },
-        { status: 500 }
-      );
-    }
-
-    const updatedUser = db.getUserById(user.id);
+    const updatedUser = await db.getUserById(user.id);
     if (!updatedUser) {
       return NextResponse.json(
         { error: 'Failed to update user' },

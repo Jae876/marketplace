@@ -13,13 +13,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all transactions in paid status (payment received, awaiting item delivery)
-    const transactions = db.getTransactions();
+    const transactions = await db.getTransactions();
     const paidOrders = transactions.filter(t => t.status === 'paid' || t.status === 'deposit_confirmed');
 
     // Build order details with buyer and product info
-    const ordersWithDetails = paidOrders.map(tx => {
-      const buyer = db.getUserById(tx.buyerId);
-      const product = db.getProductById(tx.productId);
+    const ordersWithDetails = await Promise.all(paidOrders.map(async tx => {
+      const buyer = await db.getUserById(tx.buyerId);
+      const product = await db.getProductById(tx.productId);
       
       return {
         transactionId: tx.id,
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         status: tx.status,
         itemDelivered: !!tx.itemDeliveryContent,
       };
-    });
+    }));
 
     return NextResponse.json({
       orders: ordersWithDetails,
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get transaction
-    const transaction = db.getTransactionById(transactionId);
+    const transaction = await db.getTransactionById(transactionId);
     if (!transaction) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const product = db.getProductById(transaction.productId);
-    const buyer = db.getUserById(transaction.buyerId);
+    const product = await db.getProductById(transaction.productId);
+    const buyer = await db.getUserById(transaction.buyerId);
 
     // Create item message
     const itemMessage = {
@@ -98,10 +98,10 @@ export async function POST(request: NextRequest) {
     };
 
     // Save item message
-    db.createItemMessage(itemMessage);
+    await db.createItemMessage(itemMessage);
 
     // Update transaction with item delivery content
-    db.updateTransaction(transaction.id, {
+    await db.updateTransaction(transaction.id, {
       itemDeliveryContent: itemContent,
       status: 'delivered', // Change status to 'delivered' once item is sent
     });

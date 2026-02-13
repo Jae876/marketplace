@@ -15,9 +15,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const regions = db.getRegions();
-    const types = db.getTypes();
-    const sizes = db.getSizes();
+    const regions = await db.getRegions();
+    const types = await db.getTypes();
+    const sizes = await db.getSizes();
 
     return NextResponse.json({ regions, types, sizes });
   } catch (error) {

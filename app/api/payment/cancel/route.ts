@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = db.getUserById(decoded.userId);
+    const user = await db.getUserById(decoded.userId);
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get the transaction
-    const transactions = db.getTransactions();
+    const transactions = await db.getTransactions();
     const transaction = transactions.find(t => t.id === transactionId);
 
     if (!transaction) {
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 
     // Update transaction status to cancelled
     const updatedTransaction = { ...transaction, status: 'cancelled' as const };
-    db.updateTransaction(transactionId, updatedTransaction);
+    await db.updateTransaction(transactionId, updatedTransaction);
 
     console.log('[PAYMENT-CANCEL] Order cancelled successfully:', transactionId);
 

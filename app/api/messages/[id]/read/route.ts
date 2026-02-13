@@ -26,7 +26,7 @@ export async function POST(
     // If it's an item message, mark it as read in database
     if (messageId.startsWith('item-')) {
       const actualId = messageId.substring(5); // Remove 'item-' prefix
-      db.markItemMessageAsRead(actualId);
+      await db.markItemMessageAsRead(actualId);
       return NextResponse.json({ success: true });
     }
 

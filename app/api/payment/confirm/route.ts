@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const transaction = db.getTransactionById(transactionId);
+    const transaction = await db.getTransactionById(transactionId);
     if (!transaction) {
       return NextResponse.json(
         { error: 'Transaction not found' },
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Admin/system verifies deposit and updates user balance
-    const buyer = db.getUserById(transaction.buyerId);
+    const buyer = await db.getUserById(transaction.buyerId);
     if (!buyer) {
       return NextResponse.json(
         { error: 'Buyer not found' },
@@ -74,16 +74,35 @@ export async function POST(req: NextRequest) {
 
     // Update user balance to reflect deposit
     const updatedBalance = (buyer.balance || 0) + transaction.amount;
-    db.updateUser(transaction.buyerId, {
+    await db.updateUser(transaction.buyerId, {
       balance: updatedBalance,
       trustScore: Math.min((buyer.trustScore || 0) + 5, 100),
     });
 
     // Update transaction status to deposit_confirmed
-    db.updateTransaction(transactionId, {
+    await db.updateTransaction(transactionId, {
       status: 'deposit_confirmed',
       paymentConfirmedByAdmin: true,
     });
+
+    // Create deposit confirmation notification for user
+    try {
+      await db.createItemMessage({
+        id: `deposit_notification_${transactionId}`,
+        transactionId: transactionId,
+        buyerId: transaction.buyerId,
+        sellerId: 'system',
+        productName: '✅ Your Deposit Has Been Confirmed!',
+        itemContent: `Your deposit of $${transaction.amount.toFixed(2)} ${transaction.cryptocurrency.toUpperCase()} has been confirmed and is now securely held in escrow.\n\nYou will soon receive your item. Once you receive and verify it, please confirm delivery to release the funds to the seller.`,
+        amount: transaction.amount,
+        cryptocurrency: transaction.cryptocurrency,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (notificationError) {
+      console.error('Failed to create deposit notification:', notificationError);
+      // Continue - notification failure shouldn't block main transaction
+    }
 
     return NextResponse.json({ 
       success: true,
@@ -136,7 +155,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const transaction = db.getTransactionById(transactionId);
+    const transaction = await db.getTransactionById(transactionId);
     if (!transaction) {
       return NextResponse.json(
         { error: 'Transaction not found' },
@@ -159,15 +178,48 @@ export async function PUT(req: NextRequest) {
     }
 
     // Buyer confirms they received item and are ready to release payment
-    db.updateTransaction(transactionId, {
+    await db.updateTransaction(transactionId, {
       status: 'paid',
       buyerConfirmedRelease: true,
       confirmedAt: new Date().toISOString(),
     });
 
+    // Deduct balance from user account (funds released from escrow)
+    try {
+      const buyer = await db.getUserById(transaction.buyerId);
+      if (buyer) {
+        const newBalance = Math.max((buyer.balance || 0) - transaction.amount, 0);
+        await db.updateUser(transaction.buyerId, {
+          balance: newBalance,
+        });
+      }
+    } catch (balanceError) {
+      console.error('Failed to update balance:', balanceError);
+      // Continue - balance update failure shouldn't block transaction
+    }
+
+    // Create fund release notification for user
+    try {
+      await db.createItemMessage({
+        id: `release_notification_${transactionId}`,
+        transactionId: transactionId,
+        buyerId: transaction.buyerId,
+        sellerId: 'system',
+        productName: '💰 Funds Released to Seller',
+        itemContent: `You have successfully confirmed delivery of your item. The funds ($${transaction.amount.toFixed(2)} ${transaction.cryptocurrency.toUpperCase()}) have been released from escrow to the seller.\n\nThank you for your purchase! Your transaction is now complete.`,
+        amount: transaction.amount,
+        cryptocurrency: transaction.cryptocurrency,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (notificationError) {
+      console.error('Failed to create release notification:', notificationError);
+      // Continue - notification failure shouldn't block main transaction
+    }
+
     return NextResponse.json({ 
       success: true,
-      message: 'Delivery confirmed. Payment marked as paid. Escrow can now be released.'
+      message: 'Delivery confirmed. Payment marked as paid. Funds released to seller.'
     }, {
       headers: {
         'Content-Type': 'application/json',

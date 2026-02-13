@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const transactions = db.getUserTransactions(decoded.userId);
+    const transactions = await db.getUserTransactions(decoded.userId);
 
     return NextResponse.json({ transactions }, {
       headers: {

@@ -551,6 +551,11 @@ class DatabaseWrapper {
     }
   }
 
+  // Alias for compatibility
+  async getUserTransactions(userId: string): Promise<Transaction[]> {
+    return this.getTransactionsByUser(userId);
+  }
+
   async getAllTransactions(): Promise<Transaction[]> {
     if (this.isAsync) {
       return await this.backend.getAllTransactions();

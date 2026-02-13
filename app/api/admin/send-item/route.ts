@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get transaction
-    const transaction = db.getTransactionById(transactionId);
+    const transaction = await db.getTransactionById(transactionId);
     if (!transaction) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const product = db.getProductById(transaction.productId);
-    const buyer = db.getUserById(transaction.buyerId);
+    const product = await db.getProductById(transaction.productId);
+    const buyer = await db.getUserById(transaction.buyerId);
 
     // Create item message
     const itemMessage = {
@@ -52,10 +52,10 @@ export async function POST(request: NextRequest) {
     };
 
     // Save item message
-    db.createItemMessage(itemMessage);
+    await db.createItemMessage(itemMessage);
 
     // Update transaction with item delivery content
-    db.updateTransaction(transaction.id, {
+    await db.updateTransaction(transaction.id, {
       itemDeliveryContent: itemContent,
       status: 'delivered',
     });

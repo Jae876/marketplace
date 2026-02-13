@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all item messages for this user
-    const messages = db.getUserItemMessages(decoded.userId);
+    const messages = await db.getUserItemMessages(decoded.userId);
 
     return NextResponse.json({
       messages: messages.sort((a, b) => 

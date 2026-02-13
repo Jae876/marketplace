@@ -24,7 +24,7 @@ export async function POST(
     const messageId = params.id;
 
     // Mark message as read
-    const success = db.markItemMessageAsRead(messageId);
+    const success = await db.markItemMessageAsRead(messageId);
 
     if (!success) {
       return NextResponse.json({ error: 'Message not found' }, { status: 404 });

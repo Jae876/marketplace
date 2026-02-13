@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get admin wallet for the selected cryptocurrency
-    const walletConfig = db.getWalletConfig();
+    const walletConfig = await db.getWalletConfig();
     const walletAddress = walletConfig[cryptocurrency as keyof typeof walletConfig];
     
     if (!walletAddress) {

@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const user = db.getUserById(decoded.userId);
+    const user = await db.getUserById(decoded.userId);
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Calculate current stats
-    const completedTransactions = db.getTransactions().filter(
+    const completedTransactions = (await db.getTransactions()).filter(
       t => (t.buyerId === user.id || t.sellerId === user.id) && t.status === 'completed'
     );
 
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
     // Update user if stats changed
     if (user.balance !== totalBalance || user.trustScore !== trustScore) {
-      db.updateUser(user.id, {
+      await db.updateUser(user.id, {
         balance: totalBalance,
         trustScore: trustScore,
       });

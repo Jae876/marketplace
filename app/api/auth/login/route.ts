@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     // Find user
     let user;
     try {
-      user = db.getUserByEmail(email.trim().toLowerCase());
+      user = await db.getUserByEmail(email.trim().toLowerCase());
       if (!user) {
         console.log('[LOGIN] User not found for email:', email.trim().toLowerCase());
         return NextResponse.json(

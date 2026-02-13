@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const wallets = db.getWalletConfig();
+    const wallets = await db.getWalletConfig();
     console.log('[ADMIN-WALLETS] Returning wallet config');
     return NextResponse.json({ wallets }, {
       headers: {
@@ -81,7 +81,7 @@ export async function PUT(req: NextRequest) {
     }
 
     try {
-      db.updateWalletConfig(wallets);
+      await db.updateWalletConfig(wallets);
       console.log('[ADMIN-WALLETS] Wallet config updated successfully');
     } catch (dbError: any) {
       console.error('[ADMIN-WALLETS] Database error:', dbError);

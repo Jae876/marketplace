@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const messages: any[] = [];
 
     // Get welcome message first (for new users)
-    const itemMessages = db.getUserItemMessages(decoded.userId);
+    const itemMessages = await db.getUserItemMessages(decoded.userId);
     const welcomeMessage = itemMessages.find(m => m.id.startsWith('welcome_'));
     
     if (welcomeMessage) {
@@ -57,14 +57,14 @@ export async function GET(request: NextRequest) {
     });
 
     // Get user's transactions to build other messages
-    const transactions = db.getTransactions();
+    const transactions = await db.getTransactions();
     const userTransactions = transactions.filter(
       t => t.buyerId === decoded.userId || t.sellerId === decoded.userId
     );
 
     // Build messages from transactions
-    userTransactions.forEach(tx => {
-      const product = db.getProductById(tx.productId);
+    userTransactions.forEach(async tx => {
+      const product = await db.getProductById(tx.productId);
       
       if (tx.buyerId === decoded.userId) {
         // Buyer messages
