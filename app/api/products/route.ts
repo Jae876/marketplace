@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
       new URL(req.url).searchParams
     );
 
-    let products = db.getProducts();
+    let products = await db.getAllProducts();
     console.log('[PRODUCTS] Total products found:', products.length);
 
     // Filter by region

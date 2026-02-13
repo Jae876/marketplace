@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     
     try {
       console.log('[ADMIN-PRODUCTS] Creating product...');
-      db.createProduct({
+      await db.createProduct({
         id: productId,
         name: name.trim(),
         description: description.trim(),
@@ -147,7 +147,7 @@ export async function PUT(req: NextRequest) {
     if (updates.size) updates.size = updates.size.toString().trim();
     if (updates.image) updates.image = updates.image.trim();
 
-    const success = db.updateProduct(id, updates);
+    const success = await db.updateProduct(id, updates);
 
     if (!success) {
       return NextResponse.json(

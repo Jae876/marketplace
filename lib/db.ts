@@ -402,6 +402,264 @@ if (USE_POSTGRES) {
   }
 }
 
-// Use PostgreSQL if DATABASE_URL is set, otherwise use JSON files
-export const db = USE_POSTGRES && dbPostgres ? dbPostgres : new Database();
+// Create a wrapper that normalizes both sync and async operations
+class DatabaseWrapper {
+  private backend: any;
+  private isAsync: boolean;
+
+  constructor(backend: any, isAsync: boolean) {
+    this.backend = backend;
+    this.isAsync = isAsync;
+  }
+
+  // User methods
+  async createUser(user: User): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.createUser(user);
+    } else {
+      this.backend.createUser(user);
+    }
+  }
+
+  async getUser(id: string): Promise<User | null> {
+    if (this.isAsync) {
+      return await this.backend.getUser(id);
+    } else {
+      return this.backend.getUser(id);
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    if (this.isAsync) {
+      return await this.backend.getUserByEmail(email);
+    } else {
+      return this.backend.getUserByEmail(email);
+    }
+  }
+
+  async getUserByUsername(username: string): Promise<User | null> {
+    if (this.isAsync) {
+      return await this.backend.getUserByUsername(username);
+    } else {
+      return this.backend.getUserByUsername(username);
+    }
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    if (this.isAsync) {
+      return await this.backend.getAllUsers();
+    } else {
+      return this.backend.getAllUsers();
+    }
+  }
+
+  async updateUser(id: string, user: Partial<User>): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.updateUser(id, user);
+    } else {
+      this.backend.updateUser(id, user);
+    }
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.deleteUser(id);
+    } else {
+      this.backend.deleteUser(id);
+    }
+  }
+
+  // Product methods
+  async createProduct(product: Product): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.createProduct(product);
+    } else {
+      this.backend.createProduct(product);
+    }
+  }
+
+  async getProduct(id: string): Promise<Product | null> {
+    if (this.isAsync) {
+      return await this.backend.getProduct(id);
+    } else {
+      return this.backend.getProduct(id);
+    }
+  }
+
+  async getAllProducts(): Promise<Product[]> {
+    if (this.isAsync) {
+      return await this.backend.getAllProducts();
+    } else {
+      return this.backend.getProducts();
+    }
+  }
+
+  // For backward compatibility
+  getProducts(): Product[] {
+    if (this.isAsync) {
+      throw new Error('Use getAllProducts() instead');
+    }
+    return this.backend.getProducts();
+  }
+
+  getProductById(id: string): Product | undefined {
+    if (this.isAsync) {
+      throw new Error('Use getProduct() instead');
+    }
+    return this.backend.getProductById(id);
+  }
+
+  async updateProduct(id: string, product: Partial<Product>): Promise<boolean> {
+    if (this.isAsync) {
+      await this.backend.updateProduct(id, product);
+      return true;
+    } else {
+      return this.backend.updateProduct(id, product);
+    }
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.deleteProduct(id);
+    } else {
+      this.backend.deleteProduct(id);
+    }
+  }
+
+  // Transaction methods
+  async createTransaction(transaction: Transaction): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.createTransaction(transaction);
+    } else {
+      this.backend.createTransaction(transaction);
+    }
+  }
+
+  async getTransaction(id: string): Promise<Transaction | null> {
+    if (this.isAsync) {
+      return await this.backend.getTransaction(id);
+    } else {
+      return this.backend.getTransaction(id);
+    }
+  }
+
+  async getTransactionsByUser(userId: string): Promise<Transaction[]> {
+    if (this.isAsync) {
+      return await this.backend.getTransactionsByUser(userId);
+    } else {
+      return this.backend.getTransactionsByUser(userId);
+    }
+  }
+
+  async getAllTransactions(): Promise<Transaction[]> {
+    if (this.isAsync) {
+      return await this.backend.getAllTransactions();
+    } else {
+      return this.backend.getAllTransactions();
+    }
+  }
+
+  async updateTransaction(id: string, transaction: Partial<Transaction>): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.updateTransaction(id, transaction);
+    } else {
+      this.backend.updateTransaction(id, transaction);
+    }
+  }
+
+  // ItemMessage methods
+  async createItemMessage(message: ItemMessage): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.createItemMessage(message);
+    } else {
+      this.backend.createItemMessage(message);
+    }
+  }
+
+  async getItemMessages(receiverId: string): Promise<ItemMessage[]> {
+    if (this.isAsync) {
+      return await this.backend.getItemMessages(receiverId);
+    } else {
+      return this.backend.getItemMessages(receiverId);
+    }
+  }
+
+  async getItemMessage(id: string): Promise<ItemMessage | null> {
+    if (this.isAsync) {
+      return await this.backend.getItemMessage(id);
+    } else {
+      return this.backend.getItemMessage(id);
+    }
+  }
+
+  async deleteItemMessage(id: string): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.deleteItemMessage(id);
+    } else {
+      this.backend.deleteItemMessage(id);
+    }
+  }
+
+  // Wallet methods
+  async createWallet(wallet: any): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.createWallet(wallet);
+    } else {
+      this.backend.createWallet(wallet);
+    }
+  }
+
+  async getWallet(userId: string): Promise<any> {
+    if (this.isAsync) {
+      return await this.backend.getWallet(userId);
+    } else {
+      return this.backend.getWallet(userId);
+    }
+  }
+
+  async updateWallet(userId: string, wallet: any): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.updateWallet(userId, wallet);
+    } else {
+      this.backend.updateWallet(userId, wallet);
+    }
+  }
+
+  async getWalletByAddress(address: string): Promise<any> {
+    if (this.isAsync) {
+      return await this.backend.getWalletByAddress(address);
+    } else {
+      return this.backend.getWalletByAddress(address);
+    }
+  }
+
+  async getAllWallets(): Promise<any[]> {
+    if (this.isAsync) {
+      return await this.backend.getAllWallets();
+    } else {
+      return this.backend.getAllWallets();
+    }
+  }
+
+  // Wallet config
+  getWalletConfig(): WalletConfig {
+    if (this.isAsync) {
+      throw new Error('Wallet config not supported with PostgreSQL');
+    }
+    return this.backend.getWalletConfig();
+  }
+
+  updateWalletConfig(config: Partial<WalletConfig>): void {
+    if (this.isAsync) {
+      throw new Error('Wallet config not supported with PostgreSQL');
+    }
+    this.backend.updateWalletConfig(config);
+  }
+}
+
+// Create database instance with appropriate backend
+const jsonDb = new Database();
+const backend = USE_POSTGRES && dbPostgres ? dbPostgres : jsonDb;
+export const db = new DatabaseWrapper(backend, USE_POSTGRES && dbPostgres ? true : false);
+
 export type { User, Product, Transaction, WalletConfig, ItemMessage };

@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     // Check if user exists by email or username
     try {
-      const existingUserByEmail = db.getUserByEmail(email.trim().toLowerCase());
+      const existingUserByEmail = await db.getUserByEmail(email.trim().toLowerCase());
       if (existingUserByEmail) {
         return NextResponse.json(
           { error: 'User with this email already exists' },
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const existingUserByUsername = db.getUserByUsername(username.trim());
+      const existingUserByUsername = await db.getUserByUsername(username.trim());
       if (existingUserByUsername) {
         return NextResponse.json(
           { error: 'Username already taken' },
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     // Create user in database
     try {
       console.log('[SIGNUP] Creating user in database...');
-      db.createUser({
+      await db.createUser({
         id: userId,
         email: email.trim().toLowerCase(),
         username: username.trim(),
@@ -178,7 +178,7 @@ We're thrilled to have you join our community as a new user. Here at Russian Rou
 
 Your safety and satisfaction are our top priorities. Happy shopping, and welcome aboard, ${firstName} (@${username})! 🚀`;
 
-      db.createItemMessage({
+      await db.createItemMessage({
         id: `welcome_${userId}`,
         transactionId: `welcome_${Date.now()}`,
         buyerId: userId,

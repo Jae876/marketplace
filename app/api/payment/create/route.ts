@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const product = db.getProductById(productId);
+    const product = await db.getProduct(productId);
     if (!product) {
       return NextResponse.json(
         { error: 'Product not found' },
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     // Create transaction
     const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    db.createTransaction({
+    await db.createTransaction({
       id: transactionId,
       productId,
       buyerId: decoded.userId,
