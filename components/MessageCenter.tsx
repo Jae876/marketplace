@@ -60,106 +60,11 @@ export default function MessageCenter() {
     }
   }, [isLoggedIn]);
 
-  // Show welcome message for new USERS ONLY (not admin) - from API
-  useEffect(() => {
-    if (messages.length > 0) {
-      const welcomeMsg = messages.find(m => (m as any).isWelcome === true);
-      if (welcomeMsg && !welcomeMsg.isRead) {
-        setShowWelcomeModal(true);
-      }
-    }
-  }, [messages]);
-
-  // Fetch user name for welcome message
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-        const userId = decoded.userId;
-        // Store for use in welcome message
-        localStorage.setItem('currentUserId', userId);
-      } catch (error) {
-        console.error('Error decoding token:', error);
-      }
-    }
-  }, []);
-
   // Update unread count
   useEffect(() => {
     const unread = messages.filter(m => !m.isRead).length;
     setUnreadCount(unread);
   }, [messages]);
-
-  const addWelcomeMessage = () => {
-    // Get user info from token
-    let userName = 'new user';
-    let userUsername = '@user';
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-        // You'll need to get full user details from API or localStorage
-        const userFirstName = localStorage.getItem('userFirstName') || 'User';
-        const userUsername_stored = localStorage.getItem('userUsername') || '@user';
-        userName = userFirstName;
-        userUsername = userUsername_stored;
-      }
-    } catch (error) {
-      console.error('Error getting user info:', error);
-    }
-
-    const welcomeMessage: Message = {
-      id: 'welcome-' + Date.now(),
-      title: '👋 Welcome to Russian Roulette',
-      content: `Welcome to Russian Roulette! 🎉
-We're thrilled to have you join our community as a new user. Here at Russian Roulette, you can securely browse, buy, and sell premium digital products, accounts, services, and more — all powered by cryptocurrency transactions in a safe, escrow-protected environment.
-
-To help you get started smoothly and ensure a positive experience for everyone, please take a moment to review these important platform guidelines:
-
-═══════════════════════════════════════════════════════════════
-
-📋 HOW TRANSACTIONS WORK
-
-1. BROWSING & ORDERING
-   Explore the Marketplace to find products that interest you. When you're ready, place your order — your funds will be held securely in escrow (not released to the seller yet).
-
-2. DELIVERY OF ITEM
-   • The seller will deliver your purchased item via two channels for your convenience and verification:
-      ✓ Sent to the registered email associated with your account.
-      ✓ Also delivered directly to your inbox/messages on the Russian Roulette platform. 
-   • Check both your email (including spam/junk folder) and your platform inbox shortly after the seller marks the order as "in progress" or "shipped."
-
-3. VERIFICATION & CONFIRMATION
-   • Once you receive and fully verify the item (test login, check details, ensure it matches the product description), confirm that everything is correct and satisfactory.
-   • Only after you confirm should you release the funds from escrow to the seller. This protects both buyers and sellers.
-
-4. RELEASING FUNDS
-   • Go to your Active Orders section.
-   • If satisfied → Click to release escrow (funds go to the seller).
-   • If there's an issue → Open a dispute immediately so our support team can assist. Do not release funds if the item is incorrect, not delivered, or doesn't work as described.
-
-═══════════════════════════════════════════════════════════════
-
-💡 QUICK TIPS FOR NEW USERS
-
-✓ Always double-check product descriptions before purchasing.
-✓ Keep your account secure — never share login credentials outside the platform.
-✓ Use only cryptocurrencies supported on the platform for deposits and transactions.
-✓ If anything feels off or you need help, reach out via support or check the Help section.
-
-═══════════════════════════════════════════════════════════════
-
-Your safety and satisfaction are our top priorities. We use escrow to make every deal fair and secure.
-
-Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
-      type: 'system',
-      isRead: false,
-      createdAt: new Date(),
-    };
-    setMessages([welcomeMessage]);
-  };
 
   const fetchMessages = async () => {
     try {
@@ -180,14 +85,7 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
 
       const data = await response.json();
       if (data.messages) {
-        // Preserve welcome message if it exists
-        setMessages(prev => {
-          const welcomeMsg = prev.find(m => m.id.startsWith('welcome-'));
-          if (welcomeMsg) {
-            return [welcomeMsg, ...data.messages];
-          }
-          return data.messages;
-        });
+        setMessages(data.messages);
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -265,68 +163,6 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
 
   return (
     <>
-      {/* Welcome Modal - Auto-opens for new users */}
-      {showWelcomeModal && messages.length > 0 && messages[0]?.type === 'system' && (
-        <>
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-            onClick={() => setShowWelcomeModal(false)}
-          />
-          
-          {/* Modal */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div 
-              className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-purple-700/50 max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 px-8 py-6 border-b border-slate-700/50 flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-white">{messages[0]?.title}</h2>
-                  <p className="text-xs text-slate-400 mt-1">🎓 Platform Guidelines</p>
-                </div>
-                <button
-                  onClick={() => setShowWelcomeModal(false)}
-                  className="text-slate-500 hover:text-slate-300 text-2xl w-10 h-10 rounded-full hover:bg-slate-800/50 transition-all flex items-center justify-center"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto p-8 space-y-4 text-slate-200 text-sm leading-relaxed whitespace-pre-wrap font-light">
-                {messages[0]?.content}
-              </div>
-
-              {/* Footer */}
-              <div className="border-t border-slate-700/50 px-8 py-4 bg-slate-950/50 flex justify-end gap-3">
-                <button
-                  onClick={() => {
-                    setShowWelcomeModal(false);
-                  }}
-                  className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg font-medium transition-all"
-                >
-                  No, Dismiss
-                </button>
-                <button
-                  onClick={() => {
-                    setShowWelcomeModal(false);
-                    const welcomeMsg = messages.find(m => (m as any).isWelcome === true);
-                    if (welcomeMsg) {
-                      markAsRead(welcomeMsg.id);
-                    }
-                  }}
-                  className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-medium transition-all"
-                >
-                  Yes, I Accept
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
       {/* Message Center Icon - Top Left (Only show when logged in) */}
       {isLoggedIn && (
         <div className="fixed top-6 left-6 z-40">
@@ -342,40 +178,6 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
               </span>
             )}
           </button>
-        </div>
-      )}
-
-      {/* Welcome Message Modal - Auto-opens for new users (only if logged in) - BLOCKING MODAL */}
-      {isLoggedIn && showWelcomeModal && messages.find(m => (m as any).isWelcome === true) && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 pointer-events-auto">
-          <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 px-6 py-4 border-b border-slate-700/50">
-              <div>
-                <h2 className="text-2xl font-semibold text-white">👋 Welcome to Russian Roulette</h2>
-                <p className="text-xs text-slate-400 mt-1">Please review our guidelines before proceeding</p>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="prose prose-invert max-w-none">
-                <p className="text-slate-200 whitespace-pre-wrap font-light leading-relaxed">
-                  {messages.find(m => (m as any).isWelcome === true)?.content}
-                </p>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-slate-700/50 px-6 py-4 flex gap-3">
-              <button
-                onClick={() => setShowWelcomeModal(false)}
-                className="flex-1 px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg font-light transition-all"
-              >
-                Got it, let me explore!
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
