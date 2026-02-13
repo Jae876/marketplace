@@ -96,8 +96,13 @@ class Database {
     try {
       // Ensure directory exists
       const dir = path.dirname(filePath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+      } catch (mkdirError: any) {
+        console.error(`Failed to create directory ${dir}:`, mkdirError);
+        // Try direct write anyway for serverless environments
       }
       
       // Write file atomically - handle Windows file locking issues
@@ -105,23 +110,28 @@ class Database {
       try {
         // Remove temp file if it exists
         if (fs.existsSync(tempFile)) {
-          fs.unlinkSync(tempFile);
+          try {
+            fs.unlinkSync(tempFile);
+          } catch {}
         }
         // Write to temp file first
         fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
         // Atomic rename
         if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+          try {
+            fs.unlinkSync(filePath);
+          } catch {}
         }
         fs.renameSync(tempFile, filePath);
       } catch (writeError: any) {
-        // Clean up temp file if rename fails
-        if (fs.existsSync(tempFile)) {
-          try {
-            fs.unlinkSync(tempFile);
-          } catch {}
+        // If atomic write fails, try direct write as fallback
+        console.warn(`Atomic write failed for ${filePath}, trying direct write:`, writeError.message);
+        try {
+          fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+        } catch (directError) {
+          console.error(`Direct write also failed for ${filePath}:`, directError);
+          throw directError;
         }
-        throw writeError;
       }
     } catch (error) {
       console.error(`Error writing ${filePath}:`, error);
