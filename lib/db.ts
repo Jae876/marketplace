@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
+// Check if we should use PostgreSQL (Neon on Vercel)
+const USE_POSTGRES = !!process.env.DATABASE_URL;
+
 // Use /tmp on Vercel (serverless), use ./data locally
 const DATA_DIR = process.env.VERCEL 
   ? '/tmp/data' 
@@ -388,5 +391,17 @@ class Database {
   }
 }
 
-export const db = new Database();
+// Lazy load PostgreSQL adapter
+let dbPostgres: any = null;
+if (USE_POSTGRES) {
+  try {
+    const { dbPostgres: pg } = require('./db-postgres');
+    dbPostgres = pg;
+  } catch (error) {
+    console.error('[DB] Failed to load PostgreSQL adapter:', error);
+  }
+}
+
+// Use PostgreSQL if DATABASE_URL is set, otherwise use JSON files
+export const db = USE_POSTGRES && dbPostgres ? dbPostgres : new Database();
 export type { User, Product, Transaction, WalletConfig, ItemMessage };
