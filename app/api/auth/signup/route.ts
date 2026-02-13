@@ -144,6 +144,58 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Create welcome message for new user (only for regular users, NOT admin)
+    try {
+      const welcomeContent = `Welcome to Russian Roulette! 🎉
+
+We're thrilled to have you join our community as a new user. Here at Russian Roulette, you can securely browse, buy, and sell premium digital products, accounts, services, and more — all powered by cryptocurrency transactions in a safe, escrow-protected environment.
+
+📋 HOW TRANSACTIONS WORK
+
+1. BROWSING & ORDERING
+   Explore the Marketplace to find products that interest you. When you're ready, place your order — your funds will be held securely in escrow (not released to the seller yet).
+
+2. DELIVERY OF ITEM
+   • The seller will deliver your purchased item via two channels:
+      ✓ Sent to your registered email
+      ✓ Also delivered directly to your inbox on the platform
+   • Check both your email (including spam) and your platform inbox after the seller marks the order as shipped.
+
+3. VERIFICATION & CONFIRMATION
+   • Once you receive and verify the item (test login, check details), confirm it matches the product description.
+   • Only then should you release the funds from escrow to the seller. This protects both buyers and sellers.
+
+4. RELEASING FUNDS
+   • Go to your Active Orders section.
+   • If satisfied → Click to release escrow (funds go to the seller).
+   • If there's an issue → Open a dispute so our support team can assist.
+
+💡 QUICK TIPS
+✓ Always verify product descriptions before purchasing.
+✓ Keep your account secure — never share login credentials.
+✓ Use only supported cryptocurrencies for transactions.
+✓ Contact support if you need help.
+
+Your safety and satisfaction are our top priorities. Happy shopping, and welcome aboard, ${firstName} (@${username})! 🚀`;
+
+      db.createItemMessage({
+        id: `welcome_${userId}`,
+        transactionId: `welcome_${Date.now()}`,
+        buyerId: userId,
+        sellerId: 'system',
+        productName: '👋 Welcome to Russian Roulette',
+        itemContent: welcomeContent,
+        amount: 0,
+        cryptocurrency: 'welcome',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+      console.log('[SIGNUP] Welcome message created for user:', userId);
+    } catch (welcomeError: any) {
+      console.error('[SIGNUP] Failed to create welcome message:', welcomeError);
+      // Don't fail signup if welcome message creation fails
+    }
+
     const responseData = { 
       token, 
       userId, 

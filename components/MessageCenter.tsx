@@ -30,6 +30,7 @@ export default function MessageCenter() {
   const [confirmingDelivery, setConfirmingDelivery] = useState(false);
   const [deliveryError, setDeliveryError] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   // Check if user is logged in (has token)
   useEffect(() => {
@@ -44,6 +45,7 @@ export default function MessageCenter() {
         setMessages([]);
         setIsOpen(false);
         setSelectedMessage(null);
+        setShowWelcomeModal(false);
       }
     };
 
@@ -63,6 +65,16 @@ export default function MessageCenter() {
     const unread = messages.filter(m => !m.isRead).length;
     setUnreadCount(unread);
   }, [messages]);
+
+  // Auto-open welcome modal ONCE when unread welcome message is detected (for users only)
+  useEffect(() => {
+    if (isLoggedIn) {
+      const welcomeMsg = messages.find(m => (m as any).isWelcome === true && !m.isRead);
+      if (welcomeMsg && !showWelcomeModal) {
+        setShowWelcomeModal(true);
+      }
+    }
+  }, [messages, isLoggedIn, showWelcomeModal]);
 
   const fetchMessages = async () => {
     try {
@@ -177,6 +189,50 @@ export default function MessageCenter() {
             )}
           </button>
         </div>
+      )}
+
+      {/* Welcome Modal - Shows ONCE for new users (only if logged in as regular user, NOT admin) */}
+      {isLoggedIn && showWelcomeModal && messages.length > 0 && (
+        (() => {
+          const welcomeMsg = messages.find(m => (m as any).isWelcome === true);
+          if (!welcomeMsg) return null;
+          
+          return (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-purple-700/50 max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 px-6 py-4 border-b border-slate-700/50">
+                  <h2 className="text-2xl font-semibold text-white">👋 Welcome to Russian Roulette</h2>
+                  <p className="text-xs text-slate-400 mt-1">Platform Guidelines</p>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6 text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">
+                  {welcomeMsg.content}
+                </div>
+
+                {/* Footer */}
+                <div className="border-t border-slate-700/50 px-6 py-4 flex gap-3">
+                  <button
+                    onClick={() => setShowWelcomeModal(false)}
+                    className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg font-medium transition-all"
+                  >
+                    No, Dismiss
+                  </button>
+                  <button
+                    onClick={() => {
+                      markAsRead(welcomeMsg.id);
+                      setShowWelcomeModal(false);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-medium transition-all"
+                  >
+                    Yes, I Accept
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()
       )}
 
       {/* Message Detail Modal (only if logged in) */}
