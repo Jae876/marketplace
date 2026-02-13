@@ -69,8 +69,10 @@ export default function MessageCenter() {
   // Auto-open welcome modal ONCE when unread welcome message is detected (for users only)
   useEffect(() => {
     if (isLoggedIn) {
+      // Only show welcome modal for regular users (must have firstName in localStorage from login/signup)
+      const firstName = localStorage.getItem('userFirstName');
       const welcomeMsg = messages.find(m => (m as any).isWelcome === true && !m.isRead);
-      if (welcomeMsg && !showWelcomeModal) {
+      if (welcomeMsg && !showWelcomeModal && firstName) {
         setShowWelcomeModal(true);
       }
     }
@@ -192,7 +194,7 @@ export default function MessageCenter() {
       )}
 
       {/* Welcome Modal - Shows ONCE for new users (only if logged in as regular user, NOT admin) */}
-      {isLoggedIn && showWelcomeModal && messages.length > 0 && (
+      {isLoggedIn && showWelcomeModal && messages.length > 0 && localStorage.getItem('userFirstName') && (
         (() => {
           const welcomeMsg = messages.find(m => (m as any).isWelcome === true);
           if (!welcomeMsg) return null;
