@@ -17,10 +17,21 @@ export function generateToken(userId: string): string {
 
 export function verifyToken(token: string): { userId: string } | null {
   try {
+    // Check if it's an admin token (starts with 'admin-token-')
+    if (token.startsWith('admin-token-')) {
+      return { userId: 'admin' };
+    }
+    
+    // Otherwise verify as JWT
     return jwt.verify(token, JWT_SECRET) as { userId: string };
   } catch {
     return null;
   }
+}
+
+// Helper to check if decoded token is from admin
+export function isAdminToken(userId: string | null): boolean {
+  return userId === 'admin';
 }
 
 export function getUserIdFromRequest(req: any): string | null {

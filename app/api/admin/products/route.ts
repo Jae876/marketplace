@@ -27,12 +27,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = db.getUserById(decoded.userId);
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+    // For admin token, skip user lookup
+    if (decoded.userId !== 'admin') {
+      const user = db.getUserById(decoded.userId);
+      if (!user) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
     }
 
     let body;

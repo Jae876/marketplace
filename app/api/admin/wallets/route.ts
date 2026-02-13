@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, isAdminToken } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,12 +27,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const user = db.getUserById(decoded.userId);
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+    // Skip user lookup for admin tokens
+    if (!isAdminToken(decoded.userId)) {
+      const user = db.getUserById(decoded.userId);
+      if (!user) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
     }
 
     const wallets = db.getWalletConfig();
@@ -78,12 +81,14 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const user = db.getUserById(decoded.userId);
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+    if (!isAdminToken(decoded.userId)) {
+      const user = db.getUserById(decoded.userId);
+      if (!user) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
     }
 
     let wallets;
