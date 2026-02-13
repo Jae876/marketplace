@@ -29,11 +29,36 @@ export default function MessageCenter() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [confirmingDelivery, setConfirmingDelivery] = useState(false);
   const [deliveryError, setDeliveryError] = useState('');
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Check if user is logged in (has token)
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+
+    // Listen for storage changes (logout from other tabs/windows)
+    const handleStorageChange = () => {
+      const newToken = localStorage.getItem('token');
+      setIsLoggedIn(!!newToken);
+      if (!newToken) {
+        setMessages([]);
+        setIsOpen(false);
+        setSelectedMessage(null);
+        setShowWelcomeModal(false);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Load messages on component mount
   useEffect(() => {
-    fetchMessages();
-  }, []);
+    if (isLoggedIn) {
+      fetchMessages();
+    }
+  }, [isLoggedIn]);
 
   // Show welcome message for new users
   useEffect(() => {
@@ -41,6 +66,7 @@ export default function MessageCenter() {
     if (!hasSeenWelcome && messages.length === 0) {
       addWelcomeMessage();
       localStorage.setItem('welcomeMessageSeen', 'true');
+      setShowWelcomeModal(true);
     }
   }, [messages.length]);
 
@@ -232,24 +258,114 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
 
   return (
     <>
-      {/* Message Center Icon - Top Left */}
-      <div className="fixed top-6 left-6 z-40">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="relative w-12 h-12 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center text-xl"
-          title="Messages"
-        >
-          ✉️
-          {unreadCount > 0 && (
-            <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </button>
-      </div>
+      {/* Welcome Modal - Auto-opens for new users */}
+      {showWelcomeModal && messages.length > 0 && messages[0]?.type === 'system' && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            onClick={() => setShowWelcomeModal(false)}
+          />
+          
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-purple-700/50 max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 px-8 py-6 border-b border-slate-700/50 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">{messages[0]?.title}</h2>
+                  <p className="text-xs text-slate-400 mt-1">🎓 Platform Guidelines</p>
+                </div>
+                <button
+                  onClick={() => setShowWelcomeModal(false)}
+                  className="text-slate-500 hover:text-slate-300 text-2xl w-10 h-10 rounded-full hover:bg-slate-800/50 transition-all flex items-center justify-center"
+                >
+                  ✕
+                </button>
+              </div>
 
-      {/* Message Detail Modal */}
-      {selectedMessage && (
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-8 space-y-4 text-slate-200 text-sm leading-relaxed whitespace-pre-wrap font-light">
+                {messages[0]?.content}
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-slate-700/50 px-8 py-4 bg-slate-950/50 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowWelcomeModal(false)}
+                  className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-medium transition-all"
+                >
+                  Got it! Start Exploring
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Message Center Icon - Top Right (Only show when logged in) */}
+      {isLoggedIn && (
+        <div className="fixed top-6 right-6 z-40">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="relative w-12 h-12 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center text-xl"
+            title="Messages"
+          >
+            ✉️
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Welcome Message Modal - Auto-opens for new users (only if logged in) */}
+      {isLoggedIn && showWelcomeModal && messages.length > 0 && messages[0].id.startsWith('welcome-') && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold text-white">👋 Welcome to Russian Roulette</h2>
+                <p className="text-xs text-slate-400 mt-1">New user guide</p>
+              </div>
+              <button
+                onClick={() => setShowWelcomeModal(false)}
+                className="text-slate-500 hover:text-slate-300 text-2xl w-10 h-10 rounded-full hover:bg-slate-800/50 transition-all flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="prose prose-invert max-w-none">
+                <p className="text-slate-200 whitespace-pre-wrap font-light leading-relaxed">
+                  {messages[0]?.content}
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-slate-700/50 px-6 py-4 flex gap-3">
+              <button
+                onClick={() => setShowWelcomeModal(false)}
+                className="flex-1 px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg font-light transition-all"
+              >
+                Got it, let me explore!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message Detail Modal (only if logged in) */}
+      {isLoggedIn && selectedMessage && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
@@ -332,8 +448,8 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
         </div>
       )}
 
-      {/* Messages Panel */}
-      {isOpen && (
+      {/* Messages Panel (only if logged in) */}
+      {isLoggedIn && isOpen && (
         <div className="fixed top-24 left-6 w-96 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden flex flex-col max-h-[600px] z-40">
           {/* Header */}
           <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 px-6 py-4 border-b border-slate-700/50">
