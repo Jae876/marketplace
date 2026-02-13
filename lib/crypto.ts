@@ -163,3 +163,105 @@ export const SUPPORTED_CRYPTOS: Cryptocurrency[] = [
   { id: 'base', name: 'Base', symbol: 'BASE', icon: '⬜', color: 'blue' },
 ];
 
+// Real-time cryptocurrency prices (USD)
+// These are cached prices that should be fetched from a price API in production
+// For now, using approximate market prices as of latest market data
+export const CRYPTO_PRICES: Record<string, number> = {
+  'bitcoin': 43500,
+  'ethereum': 2300,
+  'tether': 1.00,
+  'bnb': 612,
+  'xrp': 2.40,
+  'solana': 165,
+  'usdc': 1.00,
+  'cardano': 0.75,
+  'dogecoin': 0.28,
+  'polygon': 0.85,
+  'polkadot': 8.20,
+  'litecoin': 105,
+  'bitcoin-cash': 450,
+  'chainlink': 18.50,
+  'arbitrum': 2.10,
+  'avalanche': 40,
+  'uniswap': 12.50,
+  'tron': 0.12,
+  'steth': 2450,
+  'wbtc': 43500,
+  'monero': 185,
+  'cosmos': 12.30,
+  'optimism': 3.50,
+  'zcash': 65,
+  'aave': 350,
+  'compound': 125,
+  'maker': 2800,
+  'curve': 1.20,
+  'dai': 1.00,
+  'busd': 1.00,
+  'near': 7.50,
+  'vechain': 0.065,
+  'iota': 0.35,
+  'aptos': 10.50,
+  'filecoin': 15,
+  'usd-e': 1.00,
+  'leo': 8.75,
+  'okb': 65,
+  'stx': 3.20,
+  'sui': 1.80,
+};
+
+/**
+ * Convert USD amount to cryptocurrency amount
+ * @param usdAmount Amount in USD
+ * @param cryptoId Cryptocurrency ID
+ * @returns Amount in cryptocurrency with 8 decimal precision
+ */
+export function convertUsdToCrypto(usdAmount: number, cryptoId: string): number {
+  const price = CRYPTO_PRICES[cryptoId.toLowerCase()];
+  if (!price) {
+    console.warn(`Price not found for cryptocurrency: ${cryptoId}`);
+    return 0;
+  }
+  
+  // Divide USD amount by price per unit to get crypto amount
+  return parseFloat((usdAmount / price).toFixed(8));
+}
+
+/**
+ * Convert cryptocurrency amount to USD
+ * @param cryptoAmount Amount in cryptocurrency
+ * @param cryptoId Cryptocurrency ID
+ * @returns Amount in USD with 2 decimal precision
+ */
+export function convertCryptoToUsd(cryptoAmount: number, cryptoId: string): number {
+  const price = CRYPTO_PRICES[cryptoId.toLowerCase()];
+  if (!price) {
+    console.warn(`Price not found for cryptocurrency: ${cryptoId}`);
+    return 0;
+  }
+  
+  return parseFloat((cryptoAmount * price).toFixed(2));
+}
+
+/**
+ * Format cryptocurrency amount for display
+ * @param amount Amount in cryptocurrency
+ * @param symbol Cryptocurrency symbol
+ * @returns Formatted string like "0.0025 BTC"
+ */
+export function formatCryptoAmount(amount: number, symbol: string): string {
+  // Determine decimal places based on amount
+  let decimals = 8;
+  if (amount >= 1) decimals = 4;
+  if (amount >= 100) decimals = 2;
+  
+  return `${amount.toFixed(decimals)} ${symbol}`;
+}
+
+/**
+ * Get cryptocurrency details by ID
+ * @param cryptoId Cryptocurrency ID
+ * @returns Cryptocurrency object or undefined
+ */
+export function getCryptoById(cryptoId: string): Cryptocurrency | undefined {
+  return SUPPORTED_CRYPTOS.find((crypto) => crypto.id === cryptoId.toLowerCase());
+}

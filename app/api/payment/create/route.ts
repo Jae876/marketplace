@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
+import { convertUsdToCrypto, getCryptoById } from '@/lib/crypto';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -76,6 +77,10 @@ export async function POST(req: NextRequest) {
     // Calculate total amount (price * quantity)
     const totalAmount = product.price * qty;
 
+    // Get crypto details for conversion
+    const cryptoInfo = getCryptoById(cryptocurrency);
+    const cryptoAmount = convertUsdToCrypto(totalAmount, cryptocurrency);
+
     // Create transaction
     const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
@@ -95,6 +100,8 @@ export async function POST(req: NextRequest) {
       transactionId,
       walletAddress: walletAddress,
       amount: totalAmount,
+      cryptoAmount: cryptoAmount,
+      cryptoSymbol: cryptoInfo?.symbol || cryptocurrency.toUpperCase(),
       quantity: qty,
       cryptocurrency,
     }, {

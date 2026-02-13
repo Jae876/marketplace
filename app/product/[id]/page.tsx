@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { SUPPORTED_CRYPTOS } from '@/lib/crypto';
+import { SUPPORTED_CRYPTOS, convertUsdToCrypto } from '@/lib/crypto';
 import BalanceBadge from '@/components/BalanceBadge';
 
 interface Product {
@@ -584,42 +584,10 @@ export default function ProductPage() {
                       <div className="bg-slate-900/50 p-4 rounded-lg border border-purple-700/50 backdrop-blur-sm">
                         <p className="text-2xl font-bold text-purple-200">
                           {(() => {
-                            // Mock exchange rates (in production, fetch from API)
-                            const rates: { [key: string]: number } = {
-                              'bitcoin': 0.0000285,
-                              'ethereum': 0.000475,
-                              'tether': 1.0,
-                              'bnb': 0.00168,
-                              'xrp': 2.47,
-                              'solana': 0.000525,
-                              'usdc': 1.0,
-                              'cardano': 0.69,
-                              'dogecoin': 23.8,
-                              'polygon': 0.42,
-                              'polkadot': 0.0335,
-                              'litecoin': 0.000268,
-                              'bitcoin-cash': 0.000893,
-                              'chainlink': 0.0105,
-                              'arbitrum': 0.0385,
-                              'avalanche': 0.000595,
-                              'uniswap': 0.0128,
-                              'tron': 0.0315,
-                              'steth': 0.000475,
-                              'wbtc': 0.0000285,
-                              'monero': 0.00197,
-                              'cosmos': 0.108,
-                              'optimism': 0.0312,
-                              'zcash': 0.00325,
-                              'aave': 0.00428,
-                              'compound': 0.00693,
-                              'maker': 0.000985,
-                              'curve': 0.206,
-                              'dai': 1.0,
-                              'busd': 1.0,
-                            };
-                            const rate = rates[selectedCrypto] || 1;
-                            const tokenAmount = (product.price * quantity) / (1 / rate);
-                            return `${tokenAmount.toFixed(8)} ${SUPPORTED_CRYPTOS.find(c => c.id === selectedCrypto)?.symbol || selectedCrypto.toUpperCase()}`;
+                            const totalUsd = product.price * quantity;
+                            const cryptoAmount = convertUsdToCrypto(totalUsd, selectedCrypto);
+                            const cryptoSymbol = SUPPORTED_CRYPTOS.find(c => c.id === selectedCrypto)?.symbol || selectedCrypto.toUpperCase();
+                            return `${cryptoAmount.toFixed(8)} ${cryptoSymbol}`;
                           })()}
                         </p>
                         <p className="text-xs text-gray-400 mt-2">
