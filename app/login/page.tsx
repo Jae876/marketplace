@@ -72,6 +72,8 @@ export default function LoginPage() {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('userId', data.userId);
+      localStorage.setItem('userFirstName', data.firstName);
+      localStorage.setItem('userUsername', data.username);
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);

@@ -92,6 +92,9 @@ export default function SignupPage() {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('userId', data.userId);
+      localStorage.setItem('userFirstName', data.firstName);
+      localStorage.setItem('userUsername', data.username);
+      localStorage.removeItem('welcomeMessageSeen');
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Signup error:', err);
