@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { verifyToken, isAdminToken } from '@/lib/auth';
+import { verifyAdminSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,33 +9,12 @@ export async function GET(req: NextRequest) {
   try {
     console.log('[ADMIN-WALLETS] GET request received');
     
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    
-    if (!token) {
+    // Verify admin session from httpOnly cookie
+    if (!verifyAdminSession(req)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - invalid or missing admin session' },
         { status: 401 }
       );
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    // Skip user lookup for admin tokens
-    if (!isAdminToken(decoded.userId)) {
-      const user = db.getUserById(decoded.userId);
-      if (!user) {
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 404 }
-        );
-      }
     }
 
     const wallets = db.getWalletConfig();
@@ -63,32 +42,12 @@ export async function PUT(req: NextRequest) {
   try {
     console.log('[ADMIN-WALLETS] PUT request received');
     
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    
-    if (!token) {
+    // Verify admin session from httpOnly cookie
+    if (!verifyAdminSession(req)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - invalid or missing admin session' },
         { status: 401 }
       );
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    if (!isAdminToken(decoded.userId)) {
-      const user = db.getUserById(decoded.userId);
-      if (!user) {
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 404 }
-        );
-      }
     }
 
     let wallets;

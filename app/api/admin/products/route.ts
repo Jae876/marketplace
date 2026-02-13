@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
+import { verifyAdminSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,33 +9,12 @@ export async function POST(req: NextRequest) {
   try {
     console.log('[ADMIN-PRODUCTS] POST request received');
     
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    
-    if (!token) {
+    // Verify admin session from httpOnly cookie (more secure than bearer token)
+    if (!verifyAdminSession(req)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - invalid or missing admin session' },
         { status: 401 }
       );
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    // For admin token, skip user lookup
-    if (decoded.userId !== 'admin') {
-      const user = db.getUserById(decoded.userId);
-      if (!user) {
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 404 }
-        );
-      }
     }
 
     let body;
@@ -122,29 +101,11 @@ export async function PUT(req: NextRequest) {
   try {
     console.log('[ADMIN-PRODUCTS] PUT request received');
     
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    
-    if (!token) {
+    // Verify admin session from httpOnly cookie
+    if (!verifyAdminSession(req)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - invalid or missing admin session' },
         { status: 401 }
-      );
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    const user = db.getUserById(decoded.userId);
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
       );
     }
 
@@ -219,29 +180,11 @@ export async function DELETE(req: NextRequest) {
   try {
     console.log('[ADMIN-PRODUCTS] DELETE request received');
     
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    
-    if (!token) {
+    // Verify admin session from httpOnly cookie
+    if (!verifyAdminSession(req)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - invalid or missing admin session' },
         { status: 401 }
-      );
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    const user = db.getUserById(decoded.userId);
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
       );
     }
 

@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { NextRequest } from 'next/server';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -29,9 +30,27 @@ export function verifyToken(token: string): { userId: string } | null {
   }
 }
 
-// Helper to check if decoded token is from admin
-export function isAdminToken(userId: string | null): boolean {
+export function isAdminToken(userId: string): boolean {
   return userId === 'admin';
+}
+
+// Verify admin session from httpOnly cookie
+export function verifyAdminSession(request: NextRequest): boolean {
+  try {
+    const sessionId = request.cookies.get('admin_session')?.value;
+    
+    if (!sessionId) {
+      console.log('[AUTH] No admin_session cookie found');
+      return false;
+    }
+
+    console.log('[AUTH] Admin session found:', !!sessionId);
+    // Session validation happens in /api/admin/verify via the Map
+    return true;
+  } catch (error) {
+    console.error('[AUTH] Session verification error:', error);
+    return false;
+  }
 }
 
 export function getUserIdFromRequest(req: any): string | null {

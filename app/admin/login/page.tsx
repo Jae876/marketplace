@@ -38,14 +38,15 @@ export default function AdminLoginPage() {
       console.log('[ADMIN-LOGIN] Response data:', data);
 
       if (response.ok && data.success) {
-        console.log('[ADMIN-LOGIN] SUCCESS - Redirecting to admin');
-        // Successful login - clear failed attempts
+        console.log('[ADMIN-LOGIN] SUCCESS - Session created via httpOnly cookie');
+        // Successful login - clear failed attempts and DON'T store password
         localStorage.removeItem('adminFailedAttempts');
         localStorage.removeItem('adminBlocked');
         localStorage.removeItem('adminBlockTime');
-        localStorage.setItem('adminPassword', password);
-        // Set a dummy token for admin access
-        localStorage.setItem('token', 'admin-token-' + Date.now());
+        // ✅ DO NOT store password in localStorage
+        localStorage.removeItem('adminPassword');
+        // ✅ DO NOT store token in localStorage - using httpOnly cookie instead
+        localStorage.removeItem('token');
         router.push('/admin');
       } else {
         console.log('[ADMIN-LOGIN] FAILED - Invalid password response');

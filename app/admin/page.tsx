@@ -63,24 +63,27 @@ export default function AdminPage() {
   });
 
   useEffect(() => {
-    const checkAuth = () => {
-      const adminPassword = localStorage.getItem('adminPassword');
-      const token = localStorage.getItem('token');
-      
-      if (!adminPassword) {
+    const checkAuth = async () => {
+      try {
+        // Check with server if admin session is valid (via httpOnly cookie)
+        const response = await fetch('/api/admin/verify', {
+          method: 'GET',
+        });
+        
+        const data = await response.json();
+        
+        if (data.authorized) {
+          setIsAuthorized(true);
+          setAuthChecked(true);
+        } else {
+          setAuthChecked(true);
+          router.push('/admin/login');
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
         setAuthChecked(true);
         router.push('/admin/login');
-        return;
       }
-
-      if (!token) {
-        setAuthChecked(true);
-        router.push('/login');
-        return;
-      }
-
-      setIsAuthorized(true);
-      setAuthChecked(true);
     };
 
     checkAuth();
@@ -96,11 +99,9 @@ export default function AdminPage() {
 
   const fetchOptions = async () => {
     try {
-      const token = localStorage.getItem('token');
+      // Admin session is via httpOnly cookie, no need for Authorization header
       const response = await fetch('/api/admin/options', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include', // Send cookies with request
       });
       const data = await response.json();
       // Only fetch sizes for reference, types are now custom input
@@ -113,11 +114,9 @@ export default function AdminPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      // Admin session is via httpOnly cookie, no need for Authorization header
       const response = await fetch('/api/products', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include', // Send cookies with request
         cache: 'no-store', // Prevent caching
       });
       
@@ -150,11 +149,9 @@ export default function AdminPage() {
 
   const fetchWallets = async () => {
     try {
-      const token = localStorage.getItem('token');
+      // Admin session is via httpOnly cookie, no need for Authorization header
       const response = await fetch('/api/admin/wallets', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include', // Send cookies with request
       });
       const data = await response.json();
       if (data.wallets) {
@@ -166,15 +163,12 @@ export default function AdminPage() {
   };
 
   const fetchOrders = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    // Admin session is via httpOnly cookie, no need for token
     
     try {
       setLoadingOrders(true);
       const response = await fetch('/api/admin/orders', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include', // Send cookies with request
       });
       
       if (!response.ok) throw new Error('Failed to fetch orders');
@@ -194,17 +188,14 @@ export default function AdminPage() {
       return;
     }
 
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     try {
       setSendingItem(true);
-      const response = await fetch('/api/admin/orders', {
+      const response = await fetch('/api/admin/send-item', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
+        credentials: 'include', // Send cookies with request
         body: JSON.stringify({
           transactionId: selectedOrder.transactionId,
           itemContent: itemDetails,
@@ -245,13 +236,7 @@ export default function AdminPage() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('You must be logged in to add products.');
-        router.push('/login');
-        return;
-      }
-
+      // Admin session is via httpOnly cookie, token not needed here
       const url = '/api/admin/products';
       const method = editingProduct ? 'PUT' : 'POST';
 
@@ -261,8 +246,8 @@ export default function AdminPage() {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
+        credentials: 'include', // Send cookies with request
         body: JSON.stringify({
           ...(editingProduct && { id: editingProduct.id }),
           name: formData.name.trim(),
@@ -325,11 +310,7 @@ export default function AdminPage() {
     setSuccess('');
     
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('You must be logged in to save wallets.');
-        return;
-      }
+      // Admin session is via httpOnly cookie, token not needed here
 
       console.log('[ADMIN] Saving wallets:', wallets);
 
@@ -337,8 +318,8 @@ export default function AdminPage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
+        credentials: 'include', // Send cookies with request
         body: JSON.stringify(wallets),
       });
 
@@ -392,12 +373,9 @@ export default function AdminPage() {
     }
 
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`/api/admin/products?id=${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include', // Send cookies with request
       });
 
       const data = await response.json();
