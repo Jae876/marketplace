@@ -195,6 +195,11 @@ class Database {
     return this.getProducts().find(p => p.id === id);
   }
 
+  // Alias for consistency with PostgreSQL backend
+  getProduct(id: string): Product | undefined {
+    return this.getProductById(id);
+  }
+
   getRegions(): string[] {
     const products = this.getProducts();
     return Array.from(new Set(products.map(p => p.region))).sort();
