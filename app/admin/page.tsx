@@ -68,6 +68,7 @@ export default function AdminPage() {
         // Check with server if admin session is valid (via httpOnly cookie)
         const response = await fetch('/api/admin/verify', {
           method: 'GET',
+          credentials: 'include', // CRITICAL: Send httpOnly cookies with request
         });
         
         const data = await response.json();
