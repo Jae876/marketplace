@@ -44,6 +44,8 @@ export default function AdminLoginPage() {
         localStorage.removeItem('adminBlocked');
         localStorage.removeItem('adminBlockTime');
         localStorage.setItem('adminPassword', password);
+        // Set a dummy token for admin access
+        localStorage.setItem('token', 'admin-token-' + Date.now());
         router.push('/admin');
       } else {
         console.log('[ADMIN-LOGIN] FAILED - Invalid password response');
