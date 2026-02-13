@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
 
     // Build messages from transactions
     userTransactions.forEach(async (tx: any) => {
-      const product = await db.getProductById(tx.productId);
+      const product = await db.getProduct(tx.productId);
       
       if (tx.buyerId === decoded.userId) {
         // Buyer messages

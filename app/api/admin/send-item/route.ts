@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const product = await db.getProductById(transaction.productId);
+    const product = await db.getProduct(transaction.productId);
     const buyer = await db.getUserById(transaction.buyerId);
 
     // Create item message

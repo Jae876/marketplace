@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     // Build order details with buyer and product info
     const ordersWithDetails = await Promise.all(paidOrders.map(async (tx: any) => {
       const buyer = await db.getUserById(tx.buyerId);
-      const product = await db.getProductById(tx.productId);
+      const product = await db.getProduct(tx.productId);
       
       return {
         transactionId: tx.id,
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const product = await db.getProductById(transaction.productId);
+    const product = await db.getProduct(transaction.productId);
     const buyer = await db.getUserById(transaction.buyerId);
 
     // Create item message

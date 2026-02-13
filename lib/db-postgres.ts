@@ -253,7 +253,7 @@ export class PostgresDatabase {
     return result.rows;
   }
 
-  async updateProduct(id: string, product: Partial<Product>): Promise<void> {
+  async updateProduct(id: string, product: Partial<Product>): Promise<boolean> {
     await initializeTables();
     const updates: string[] = [];
     const values: any[] = [];
@@ -267,11 +267,12 @@ export class PostgresDatabase {
       }
     });
 
-    if (updates.length === 0) return;
+    if (updates.length === 0) return false;
 
     values.push(id);
     const query = `UPDATE products SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
-    await pool.query(query, values);
+    const result = await pool.query(query, values);
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   async deleteProduct(id: string): Promise<void> {

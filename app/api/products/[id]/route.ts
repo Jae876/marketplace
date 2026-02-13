@@ -19,7 +19,7 @@ export async function GET(
     }
 
     console.log('[PRODUCT-DETAIL] Fetching product:', id);
-    const product = await db.getProductById(id);
+    const product = await db.getProduct(id);
     
     if (!product) {
       console.log('[PRODUCT-DETAIL] Product not found:', id);
