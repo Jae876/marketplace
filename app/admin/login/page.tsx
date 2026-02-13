@@ -12,12 +12,69 @@ export default function AdminLoginPage() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockTimer, setBlockTimer] = useState(0);
 
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'jaeseanjae';
-  const MAX_ATTEMPTS = 3;
-  const BLOCK_DURATION = 300; // 5 minutes in seconds
+  // Verify password on the server instead of client
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isBlocked) {
+      setError(`Too many failed attempts. Please try again in ${blockTimer} seconds.`);
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+
+    try {
+      // Call a verification API instead of checking locally
+      const response = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Successful login - clear failed attempts
+        localStorage.removeItem('adminFailedAttempts');
+        localStorage.removeItem('adminBlocked');
+        localStorage.removeItem('adminBlockTime');
+        localStorage.setItem('adminPassword', password);
+        router.push('/admin');
+      } else {
+        // Failed attempt
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+        localStorage.setItem('adminFailedAttempts', newAttempts.toString());
+
+        const MAX_ATTEMPTS = 3;
+        if (newAttempts >= MAX_ATTEMPTS) {
+          // Block access
+          const BLOCK_DURATION = 300;
+          const blockUntil = Date.now() + BLOCK_DURATION * 1000;
+          localStorage.setItem('adminBlocked', 'true');
+          localStorage.setItem('adminBlockTime', blockUntil.toString());
+          setIsBlocked(true);
+          setBlockTimer(BLOCK_DURATION);
+          setError(`❌ Access blocked after ${MAX_ATTEMPTS} failed attempts. You have been redirected to user access. Try again in ${BLOCK_DURATION} seconds.`);
+          
+          // Auto redirect to user after 3 seconds
+          setTimeout(() => {
+            router.push('/');
+          }, 3000);
+        } else {
+          setError(`Invalid password. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts !== 1 ? 's' : ''} remaining.`);
+        }
+      }
+    } catch (err) {
+      setError('Login failed - server error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Check if user is blocked
+    // Check if user is blocked on mount
     const blocked = localStorage.getItem('adminBlocked');
     const blockTime = localStorage.getItem('adminBlockTime');
     
@@ -61,55 +118,6 @@ export default function AdminLoginPage() {
       }
     }
   }, []);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (isBlocked) {
-      setError(`Too many failed attempts. Please try again in ${blockTimer} seconds.`);
-      return;
-    }
-
-    setError('');
-    setLoading(true);
-
-    try {
-      if (password === ADMIN_PASSWORD) {
-        // Successful login - clear failed attempts
-        localStorage.removeItem('adminFailedAttempts');
-        localStorage.removeItem('adminBlocked');
-        localStorage.removeItem('adminBlockTime');
-        localStorage.setItem('adminPassword', password);
-        router.push('/admin');
-      } else {
-        // Failed attempt
-        const newAttempts = failedAttempts + 1;
-        setFailedAttempts(newAttempts);
-        localStorage.setItem('adminFailedAttempts', newAttempts.toString());
-
-        if (newAttempts >= MAX_ATTEMPTS) {
-          // Block access
-          const blockUntil = Date.now() + BLOCK_DURATION * 1000;
-          localStorage.setItem('adminBlocked', 'true');
-          localStorage.setItem('adminBlockTime', blockUntil.toString());
-          setIsBlocked(true);
-          setBlockTimer(BLOCK_DURATION);
-          setError(`❌ Access blocked after ${MAX_ATTEMPTS} failed attempts. You have been redirected to user access. Try again in ${BLOCK_DURATION} seconds.`);
-          
-          // Auto redirect to user after 3 seconds
-          setTimeout(() => {
-            router.push('/');
-          }, 3000);
-        } else {
-          setError(`Invalid password. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts !== 1 ? 's' : ''} remaining.`);
-        }
-      }
-    } catch (err) {
-      setError('Login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('adminPassword');
