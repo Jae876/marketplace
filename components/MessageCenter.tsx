@@ -175,8 +175,8 @@ export default function MessageCenter() {
 
   return (
     <>
-      {/* Message Center Icon - Top Left (Only show when logged in) */}
-      {isLoggedIn && (
+      {/* Message Center Icon - Top Left (Only show for REGULAR USERS, NOT admin) */}
+      {isLoggedIn && localStorage.getItem('userFirstName') && (
         <div className="fixed top-6 left-6 z-40">
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -193,8 +193,8 @@ export default function MessageCenter() {
         </div>
       )}
 
-      {/* Welcome Modal - Shows ONCE for new users (only if logged in as regular user, NOT admin) */}
-      {isLoggedIn && showWelcomeModal && messages.length > 0 && localStorage.getItem('userFirstName') && (
+      {/* Welcome Modal - Shows ONCE for REGULAR USERS ONLY (not admin) */}
+      {isLoggedIn && localStorage.getItem('userFirstName') && showWelcomeModal && messages.length > 0 && (
         (() => {
           const welcomeMsg = messages.find(m => (m as any).isWelcome === true);
           if (!welcomeMsg) return null;
@@ -204,8 +204,8 @@ export default function MessageCenter() {
               <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-purple-700/50 max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 px-6 py-4 border-b border-slate-700/50">
-                  <h2 className="text-2xl font-semibold text-white">👋 Welcome to Russian Roulette</h2>
-                  <p className="text-xs text-slate-400 mt-1">Platform Guidelines</p>
+                  <h2 className="text-2xl font-semibold text-white">👋 Welcome, {localStorage.getItem('userFirstName')}!</h2>
+                  <p className="text-xs text-slate-400 mt-1">Platform Guidelines & Terms</p>
                 </div>
 
                 {/* Content */}

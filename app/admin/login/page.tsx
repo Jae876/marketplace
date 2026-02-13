@@ -39,7 +39,7 @@ export default function AdminLoginPage() {
 
       if (response.ok && data.success) {
         console.log('[ADMIN-LOGIN] SUCCESS - Session created via httpOnly cookie');
-        // Successful login - clear failed attempts and DON'T store password
+        // Successful login - clear ALL user-related localStorage
         localStorage.removeItem('adminFailedAttempts');
         localStorage.removeItem('adminBlocked');
         localStorage.removeItem('adminBlockTime');
@@ -47,6 +47,10 @@ export default function AdminLoginPage() {
         localStorage.removeItem('adminPassword');
         // ✅ DO NOT store token in localStorage - using httpOnly cookie instead
         localStorage.removeItem('token');
+        // ✅ Clear all user-related data so MessageCenter knows this is admin
+        localStorage.removeItem('userFirstName');
+        localStorage.removeItem('userUsername');
+        localStorage.removeItem('userId');
         router.push('/admin');
       } else {
         console.log('[ADMIN-LOGIN] FAILED - Invalid password response');
