@@ -60,27 +60,15 @@ export default function MessageCenter() {
     }
   }, [isLoggedIn]);
 
-  // Show welcome message for new USERS ONLY (not admin)
+  // Show welcome message for new USERS ONLY (not admin) - from API
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const hasSeenWelcome = localStorage.getItem('welcomeMessageSeen');
-    
-    // Only show welcome for users (they have JWT token), NOT admin
-    if (token && !hasSeenWelcome) {
-      // Check if it's a user token (JWT with userId) and NOT admin
-      try {
-        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-        // Only show welcome if it's a user (has userId), not admin
-        if (decoded.userId) {
-          addWelcomeMessage();
-          localStorage.setItem('welcomeMessageSeen', 'true');
-          setShowWelcomeModal(true);
-        }
-      } catch (error) {
-        console.error('Error decoding token:', error);
+    if (messages.length > 0) {
+      const welcomeMsg = messages.find(m => (m as any).isWelcome === true);
+      if (welcomeMsg && !welcomeMsg.isRead) {
+        setShowWelcomeModal(true);
       }
     }
-  }, [isLoggedIn]);
+  }, [messages]);
 
   // Fetch user name for welcome message
   useEffect(() => {
@@ -324,7 +312,10 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
                 <button
                   onClick={() => {
                     setShowWelcomeModal(false);
-                    markAsRead('welcome-' + messages[0]?.id.split('-')[1]);
+                    const welcomeMsg = messages.find(m => (m as any).isWelcome === true);
+                    if (welcomeMsg) {
+                      markAsRead(welcomeMsg.id);
+                    }
                   }}
                   className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-medium transition-all"
                 >
@@ -355,7 +346,7 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
       )}
 
       {/* Welcome Message Modal - Auto-opens for new users (only if logged in) - BLOCKING MODAL */}
-      {isLoggedIn && showWelcomeModal && messages.length > 0 && messages[0].id.startsWith('welcome-') && (
+      {isLoggedIn && showWelcomeModal && messages.find(m => (m as any).isWelcome === true) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 pointer-events-auto">
           <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto">
             {/* Header */}
@@ -370,7 +361,7 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
             <div className="flex-1 overflow-y-auto p-6">
               <div className="prose prose-invert max-w-none">
                 <p className="text-slate-200 whitespace-pre-wrap font-light leading-relaxed">
-                  {messages[0]?.content}
+                  {messages.find(m => (m as any).isWelcome === true)?.content}
                 </p>
               </div>
             </div>

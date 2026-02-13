@@ -20,9 +20,25 @@ export async function GET(request: NextRequest) {
 
     const messages: any[] = [];
 
-    // Get item delivery messages (items sent by admin)
+    // Get welcome message first (for new users)
     const itemMessages = db.getUserItemMessages(decoded.userId);
-    itemMessages.forEach(itemMsg => {
+    const welcomeMessage = itemMessages.find(m => m.id.startsWith('welcome_'));
+    
+    if (welcomeMessage) {
+      messages.push({
+        id: `welcome-${welcomeMessage.id}`,
+        title: welcomeMessage.productName,
+        content: welcomeMessage.itemContent,
+        type: 'system',
+        transactionId: welcomeMessage.transactionId,
+        isRead: welcomeMessage.isRead,
+        createdAt: new Date(welcomeMessage.createdAt),
+        isWelcome: true, // Special flag for welcome modal
+      });
+    }
+
+    // Get other item delivery messages (items sent by admin)
+    itemMessages.filter(m => !m.id.startsWith('welcome_')).forEach(itemMsg => {
       messages.push({
         id: `item-${itemMsg.id}`,
         title: `📦 Item Delivery: ${itemMsg.productName}`,

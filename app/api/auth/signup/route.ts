@@ -130,6 +130,69 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Create welcome message for new user
+    try {
+      console.log('[SIGNUP] Creating welcome message for new user...');
+      const welcomeContent = `Welcome to Russian Roulette! 🎉
+We're thrilled to have you join our community as a new user. Here at Russian Roulette, you can securely browse, buy, and sell premium digital products, accounts, services, and more — all powered by cryptocurrency transactions in a safe, escrow-protected environment.
+
+To help you get started smoothly and ensure a positive experience for everyone, please take a moment to review these important platform guidelines:
+
+═══════════════════════════════════════════════════════════════
+
+📋 HOW TRANSACTIONS WORK
+
+1. BROWSING & ORDERING
+   Explore the Marketplace to find products that interest you. When you're ready, place your order — your funds will be held securely in escrow (not released to the seller yet).
+
+2. DELIVERY OF ITEM
+   • The seller will deliver your purchased item via two channels for your convenience and verification:
+      ✓ Sent to the registered email associated with your account.
+      ✓ Also delivered directly to your inbox/messages on the Russian Roulette platform. 
+   • Check both your email (including spam/junk folder) and your platform inbox shortly after the seller marks the order as "in progress" or "shipped."
+
+3. VERIFICATION & CONFIRMATION
+   • Once you receive and fully verify the item (test login, check details, ensure it matches the product description), confirm that everything is correct and satisfactory.
+   • Only after you confirm should you release the funds from escrow to the seller. This protects both buyers and sellers.
+
+4. RELEASING FUNDS
+   • Go to your Active Orders section.
+   • If satisfied → Click to release escrow (funds go to the seller).
+   • If there's an issue → Open a dispute immediately so our support team can assist. Do not release funds if the item is incorrect, not delivered, or doesn't work as described.
+
+═══════════════════════════════════════════════════════════════
+
+💡 QUICK TIPS FOR NEW USERS
+
+✓ Always double-check product descriptions before purchasing.
+✓ Keep your account secure — never share login credentials outside the platform.
+✓ Use only cryptocurrencies supported on the platform for deposits and transactions.
+✓ If anything feels off or you need help, reach out via support or check the Help section.
+
+═══════════════════════════════════════════════════════════════
+
+Your safety and satisfaction are our top priorities. We use escrow to make every deal fair and secure.
+
+Happy shopping, and welcome aboard, ${firstName} (@${username})! 🚀`;
+
+      db.createItemMessage({
+        id: `welcome_${userId}`,
+        transactionId: `welcome_${Date.now()}`,
+        buyerId: userId,
+        sellerId: 'system',
+        productName: '👋 Welcome to Russian Roulette',
+        itemContent: welcomeContent,
+        amount: 0,
+        cryptocurrency: 'WELCOME',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+      console.log('[SIGNUP] Welcome message created successfully');
+    } catch (welcomeError: any) {
+      console.error('[SIGNUP] Warning: Failed to create welcome message:', welcomeError);
+      // Don't fail signup if welcome message creation fails
+    }
+
     // Generate token
     let token: string;
     try {
