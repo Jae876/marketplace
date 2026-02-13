@@ -63,12 +63,12 @@ export default function MessageCenter() {
   // Show welcome message for new users
   useEffect(() => {
     const hasSeenWelcome = localStorage.getItem('welcomeMessageSeen');
-    if (!hasSeenWelcome && messages.length === 0) {
+    if (!hasSeenWelcome) {
       addWelcomeMessage();
       localStorage.setItem('welcomeMessageSeen', 'true');
       setShowWelcomeModal(true);
     }
-  }, [messages.length]);
+  }, [isLoggedIn]);
 
   // Fetch user name for welcome message
   useEffect(() => {
@@ -180,7 +180,14 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
 
       const data = await response.json();
       if (data.messages) {
-        setMessages(data.messages);
+        // Preserve welcome message if it exists
+        setMessages(prev => {
+          const welcomeMsg = prev.find(m => m.id.startsWith('welcome-'));
+          if (welcomeMsg) {
+            return [welcomeMsg, ...data.messages];
+          }
+          return data.messages;
+        });
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -306,9 +313,9 @@ Happy shopping, and welcome aboard, ${userName} (${userUsername})! 🚀`,
         </>
       )}
 
-      {/* Message Center Icon - Top Right (Only show when logged in) */}
+      {/* Message Center Icon - Top Left (Only show when logged in) */}
       {isLoggedIn && (
-        <div className="fixed top-6 right-6 z-40">
+        <div className="fixed top-6 left-6 z-40">
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="relative w-12 h-12 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center text-xl"
