@@ -60,13 +60,25 @@ export default function MessageCenter() {
     }
   }, [isLoggedIn]);
 
-  // Show welcome message for new users
+  // Show welcome message for new USERS ONLY (not admin)
   useEffect(() => {
+    const token = localStorage.getItem('token');
     const hasSeenWelcome = localStorage.getItem('welcomeMessageSeen');
-    if (!hasSeenWelcome) {
-      addWelcomeMessage();
-      localStorage.setItem('welcomeMessageSeen', 'true');
-      setShowWelcomeModal(true);
+    
+    // Only show welcome for users (they have JWT token), NOT admin
+    if (token && !hasSeenWelcome) {
+      // Check if it's a user token (JWT with userId) and NOT admin
+      try {
+        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        // Only show welcome if it's a user (has userId), not admin
+        if (decoded.userId) {
+          addWelcomeMessage();
+          localStorage.setItem('welcomeMessageSeen', 'true');
+          setShowWelcomeModal(true);
+        }
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
     }
   }, [isLoggedIn]);
 
