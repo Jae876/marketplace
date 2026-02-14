@@ -198,7 +198,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const success = db.deleteProduct(id);
+    const success = await db.deleteProduct(id);
 
     if (!success) {
       return NextResponse.json(
