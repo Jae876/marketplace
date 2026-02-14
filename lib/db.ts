@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 // Check if we should use PostgreSQL (Neon on Vercel)
-const USE_POSTGRES = !!process.env.DATABASE_URL;
+const USE_POSTGRES = !!(process.env.DATABASE_URL || process.env.POSTGRES_URL_NO_SSL);
 
 // Use /tmp on Vercel (serverless), use ./data locally
 const DATA_DIR = process.env.VERCEL 
