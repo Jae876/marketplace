@@ -523,11 +523,11 @@ class DatabaseWrapper {
     }
   }
 
-  async deleteProduct(id: string): Promise<void> {
+  async deleteProduct(id: string): Promise<boolean> {
     if (this.isAsync) {
       return await this.backend.deleteProduct(id);
     } else {
-      this.backend.deleteProduct(id);
+      return this.backend.deleteProduct(id);
     }
   }
 

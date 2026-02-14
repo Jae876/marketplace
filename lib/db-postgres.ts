@@ -275,9 +275,10 @@ export class PostgresDatabase {
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  async deleteProduct(id: string): Promise<void> {
+  async deleteProduct(id: string): Promise<boolean> {
     await initializeTables();
-    await pool.query('DELETE FROM products WHERE id = $1', [id]);
+    const result = await pool.query('DELETE FROM products WHERE id = $1', [id]);
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   async createTransaction(transaction: Transaction): Promise<void> {
