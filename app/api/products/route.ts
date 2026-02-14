@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Never cache
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     );
 
     let products = await db.getAllProducts();
-    console.log('[PRODUCTS] Total products found:', products.length);
+    console.log('[PRODUCTS] Total products from database:', products.length);
 
     // Filter by region
     if (region) {
