@@ -383,7 +383,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center space-x-4">
               {/* Message Center - Shows notifications and welcome modal */}
-              {user && <MessageCenter userId={user.id} firstName={user.firstName} />}
+              {user && <MessageCenter />}
               {/* Balance Badge - Transparency Indicator */}
               {user && (
                 <BalanceBadge 
