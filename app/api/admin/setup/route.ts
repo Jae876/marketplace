@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { neon } from '@neondatabase/serverless';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // CRITICAL: Initialize database schema on Vercel deployment
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL_NO_SSL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
 async function setupDatabase() {
   try {
     console.log('[DB SETUP] Starting database initialization...');
+    
+    // Use Neon serverless driver (works perfectly on Vercel)
+    const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL_NO_SSL;
+    if (!connectionString) {
+      console.log('[DB SETUP] No database URL provided - skipping schema initialization');
+      return true;
+    }
+    
+    const sql = neon(connectionString);
 
     // Create users table
-    await pool.query(`
+    await sql`
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(255) PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
@@ -27,11 +32,11 @@ async function setupDatabase() {
         "trustScore" INTEGER DEFAULT 50,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `;
     console.log('[DB SETUP] ✅ users table ready');
 
     // Create products table
-    await pool.query(`
+    await sql`
       CREATE TABLE IF NOT EXISTS products (
         id VARCHAR(255) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -43,11 +48,11 @@ async function setupDatabase() {
         image TEXT,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `;
     console.log('[DB SETUP] ✅ products table ready');
 
     // Create transactions table
-    await pool.query(`
+    await sql`
       CREATE TABLE IF NOT EXISTS transactions (
         id VARCHAR(255) PRIMARY KEY,
         "productId" VARCHAR(255) NOT NULL,
@@ -62,15 +67,15 @@ async function setupDatabase() {
         "itemDeliveryContent" TEXT,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         "confirmedAt" TIMESTAMP,
-        FOREIGN KEY ("productId") REFERENCES products(id),
-        FOREIGN KEY ("buyerId") REFERENCES users(id),
-        FOREIGN KEY ("sellerId") REFERENCES users(id)
+        FOREIGN KEY ("productId") REFERENCES products(id) ON DELETE CASCADE,
+        FOREIGN KEY ("buyerId") REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY ("sellerId") REFERENCES users(id) ON DELETE CASCADE
       )
-    `);
+    `;
     console.log('[DB SETUP] ✅ transactions table ready');
 
     // Create item_messages table
-    await pool.query(`
+    await sql`
       CREATE TABLE IF NOT EXISTS item_messages (
         id VARCHAR(255) PRIMARY KEY,
         "transactionId" VARCHAR(255),
@@ -83,34 +88,34 @@ async function setupDatabase() {
         "isRead" BOOLEAN DEFAULT FALSE,
         "isWelcome" BOOLEAN DEFAULT FALSE,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("transactionId") REFERENCES transactions(id),
-        FOREIGN KEY ("buyerId") REFERENCES users(id),
-        FOREIGN KEY ("sellerId") REFERENCES users(id)
+        FOREIGN KEY ("transactionId") REFERENCES transactions(id) ON DELETE CASCADE,
+        FOREIGN KEY ("buyerId") REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY ("sellerId") REFERENCES users(id) ON DELETE CASCADE
       )
-    `);
+    `;
     console.log('[DB SETUP] ✅ item_messages table ready');
 
     // Create wallets table
-    await pool.query(`
+    await sql`
       CREATE TABLE IF NOT EXISTS wallets (
         id VARCHAR(255) PRIMARY KEY,
         "userId" VARCHAR(255) UNIQUE NOT NULL,
         address VARCHAR(255) NOT NULL,
         balance DECIMAL(18, 8) DEFAULT 0,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("userId") REFERENCES users(id)
+        FOREIGN KEY ("userId") REFERENCES users(id) ON DELETE CASCADE
       )
-    `);
+    `;
     console.log('[DB SETUP] ✅ wallets table ready');
 
     // Create wallet_config table
-    await pool.query(`
+    await sql`
       CREATE TABLE IF NOT EXISTS wallet_config (
         id SERIAL PRIMARY KEY,
         config JSONB DEFAULT '{}',
         "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `;
     console.log('[DB SETUP] ✅ wallet_config table ready');
 
     console.log('[DB SETUP] ✅ All database tables initialized successfully!');
@@ -151,7 +156,5 @@ export async function GET(req: NextRequest) {
       },
       { status: 500 }
     );
-  } finally {
-    await pool.end();
   }
 }
