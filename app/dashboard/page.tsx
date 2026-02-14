@@ -775,6 +775,60 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Featured Products Section */}
+            <div className="mt-12">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-100">Featured Products</h2>
+                  <p className="text-gray-400 text-sm mt-1">Recently listed items available for purchase</p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('products')}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  View All
+                </button>
+              </div>
+
+              {products.length === 0 ? (
+                <div className="bg-dark-200/80 backdrop-blur-sm rounded-xl p-12 text-center border border-purple-800/30">
+                  <p className="text-gray-400 text-lg">No products available yet</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {products.slice(0, 6).map((product) => (
+                    <Link
+                      key={product.id}
+                      href={`/product/${product.id}`}
+                      className="group bg-dark-200/80 backdrop-blur-sm rounded-xl overflow-hidden border border-purple-800/30 hover:border-purple-600/50 hover:shadow-lg transition-all"
+                    >
+                      <div className="aspect-square bg-gradient-to-br from-purple-900/40 to-pink-900/40 flex items-center justify-center overflow-hidden">
+                        <div className="text-center">
+                          <div className="text-4xl mb-2">📦</div>
+                          <p className="text-xs text-gray-400">{product.region}</p>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-semibold text-gray-100 group-hover:text-purple-300 transition-colors line-clamp-2">
+                          {product.name}
+                        </h3>
+                        <p className="text-sm text-gray-400 mt-2 line-clamp-2">{product.description}</p>
+                        <div className="flex items-end justify-between mt-4">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Price</p>
+                            <p className="text-lg font-bold text-purple-400">${product.price.toFixed(2)}</p>
+                          </div>
+                          <div className="text-xs bg-purple-900/50 px-3 py-1 rounded text-purple-300">
+                            {product.type}
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </>
         )}
 
