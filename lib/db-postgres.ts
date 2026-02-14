@@ -70,6 +70,7 @@ async function initializeTables() {
         "receiverId" VARCHAR(255) NOT NULL,
         message TEXT,
         "isWelcome" BOOLEAN DEFAULT FALSE,
+        "isRead" BOOLEAN DEFAULT FALSE,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY ("senderId") REFERENCES users(id),
         FOREIGN KEY ("receiverId") REFERENCES users(id)

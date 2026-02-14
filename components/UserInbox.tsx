@@ -183,16 +183,6 @@ export default function UserInbox() {
                   Close
                 </button>
                 <button
-                  onClick={() => {
-                    // Copy to clipboard
-                    navigator.clipboard.writeText(selectedMessage.itemContent);
-                    alert('Copied to clipboard!');
-                  }}
-                  className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors"
-                >
-                  📋 Copy to Clipboard
-                </button>
-                <button
                   onClick={() => releaseFunds(selectedMessage.transactionId)}
                   disabled={releasingFunds}
                   className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
