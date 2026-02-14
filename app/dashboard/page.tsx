@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { REGIONS } from '@/lib/regions';
 import BalanceBadge from '@/components/BalanceBadge';
 import UserInbox from '@/components/UserInbox';
+import MessageCenter from '@/components/MessageCenter';
 
 interface Transaction {
   id: string;
@@ -381,6 +382,8 @@ export default function DashboardPage() {
               </Link>
             </div>
             <div className="flex items-center space-x-4">
+              {/* Message Center - Shows notifications and welcome modal */}
+              {user && <MessageCenter userId={user.id} firstName={user.firstName} />}
               {/* Balance Badge - Transparency Indicator */}
               {user && (
                 <BalanceBadge 

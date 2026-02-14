@@ -17,6 +17,7 @@ export default function UserInbox() {
   const [messages, setMessages] = useState<ItemMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<ItemMessage | null>(null);
+  const [releasingFunds, setReleasingFunds] = useState(false);
 
   useEffect(() => {
     fetchMessages();
@@ -64,6 +65,34 @@ export default function UserInbox() {
       ));
     } catch (error) {
       console.error('Error marking as read:', error);
+    }
+  };
+
+  const releaseFunds = async (transactionId: string) => {
+    try {
+      setReleasingFunds(true);
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('/api/payment/confirm', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ transactionId }),
+      });
+
+      if (!response.ok) throw new Error('Failed to release funds');
+      
+      alert('✅ Funds released successfully!');
+      setSelectedMessage(null);
+      fetchMessages(); // Refresh messages
+    } catch (error) {
+      console.error('Error releasing funds:', error);
+      alert('❌ Failed to release funds');
+    } finally {
+      setReleasingFunds(false);
     }
   };
 
@@ -162,6 +191,13 @@ export default function UserInbox() {
                   className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors"
                 >
                   📋 Copy to Clipboard
+                </button>
+                <button
+                  onClick={() => releaseFunds(selectedMessage.transactionId)}
+                  disabled={releasingFunds}
+                  className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
+                >
+                  {releasingFunds ? '⏳ Releasing...' : '💰 Release Funds'}
                 </button>
               </div>
             </div>
