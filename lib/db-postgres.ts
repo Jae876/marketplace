@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import type { User, Product, Transaction, ItemMessage, Wallet, WalletConfig } from './db';
 
 // Initialize Neon serverless client
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL_NO_SSL;
@@ -128,73 +129,6 @@ async function initializeTables() {
     console.error('[NEON] Error initializing tables:', error.message);
     // Don't throw - let queries fail individually if schema is wrong
   }
-}
-
-interface User {
-  id: string;
-  email: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  password: string;
-  securityPhrase: string;
-  balance?: number;
-  trustScore?: number;
-  createdAt: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  region: string;
-  type: string;
-  size?: string;
-  image?: string;
-  createdAt: string;
-}
-
-interface Transaction {
-  id: string;
-  productId: string;
-  buyerId: string;
-  sellerId: string;
-  amount: number;
-  cryptocurrency: string;
-  walletAddress: string;
-  status: string;
-  paymentConfirmedByAdmin?: boolean;
-  buyerConfirmedRelease?: boolean;
-  itemDeliveryContent?: string;
-  createdAt: string;
-  confirmedAt?: string;
-}
-
-interface ItemMessage {
-  id: string;
-  transactionId?: string;
-  buyerId: string;
-  sellerId: string;
-  productName?: string;
-  itemContent?: string;
-  amount?: number;
-  cryptocurrency?: string;
-  isRead: boolean;
-  isWelcome?: boolean;
-  createdAt: string;
-}
-
-interface Wallet {
-  id: string;
-  userId: string;
-  address: string;
-  balance: number;
-  createdAt: string;
-}
-
-interface WalletConfig {
-  [key: string]: string; // Support all 130+ cryptocurrencies dynamically
 }
 
 export class PostgresDatabase {

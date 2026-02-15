@@ -18,7 +18,7 @@ try {
   console.error('Failed to create data directory:', error);
 }
 
-interface User {
+export interface User {
   id: string;
   email: string;
   username: string;
@@ -31,7 +31,7 @@ interface User {
   createdAt: string;
 }
 
-interface Product {
+export interface Product {
   id: string;
   name: string;
   description: string;
@@ -43,7 +43,7 @@ interface Product {
   createdAt: string;
 }
 
-interface Transaction {
+export interface Transaction {
   id: string;
   productId: string;
   buyerId: string;
@@ -59,20 +59,29 @@ interface Transaction {
   confirmedAt?: string;
 }
 
-interface ItemMessage {
+export interface ItemMessage {
   id: string;
-  transactionId: string;
+  transactionId?: string;
   buyerId: string;
   sellerId: string;
-  productName: string;
-  itemContent: string; // The actual item/account credentials
-  amount: number;
-  cryptocurrency: string;
+  productName?: string;
+  itemContent?: string;
+  amount?: number;
+  cryptocurrency?: string;
   isRead: boolean;
+  isWelcome?: boolean;
   createdAt: string;
 }
 
-interface WalletConfig {
+export interface Wallet {
+  id: string;
+  userId: string;
+  address: string;
+  balance: number;
+  createdAt: string;
+}
+
+export interface WalletConfig {
   [key: string]: string; // Support all 130+ cryptocurrencies dynamically
 }
 
@@ -754,5 +763,3 @@ class DatabaseWrapper {
 const jsonDb = new Database();
 const backend = USE_POSTGRES && dbPostgres ? dbPostgres : jsonDb;
 export const db = new DatabaseWrapper(backend, USE_POSTGRES && dbPostgres ? true : false);
-
-export type { User, Product, Transaction, WalletConfig, ItemMessage };
