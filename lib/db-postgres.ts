@@ -123,6 +123,28 @@ async function initializeTables() {
     `;
     console.log('[NEON] ✓ wallet_config table created/exists');
 
+    // Ensure 'system' admin user exists for transactions and messages
+    try {
+      const systemUserExists = await sql`SELECT id FROM users WHERE id = 'system' LIMIT 1`;
+      if (!systemUserExists || (systemUserExists as any[]).length === 0) {
+        try {
+          await sql`
+            INSERT INTO users (id, email, username, "firstName", "lastName", password, "securityPhrase", balance, "trustScore", "createdAt")
+            VALUES ('system', 'system@admin.local', 'system', 'System', 'Admin', 'locked', 'locked', 0, 100, NOW())
+          `;
+          console.log('[NEON] ✓ System admin user created');
+        } catch (insertErr: any) {
+          if (insertErr.message?.includes('unique constraint')) {
+            console.log('[NEON] System user already exists');
+          } else {
+            throw insertErr;
+          }
+        }
+      }
+    } catch (sysUserError: any) {
+      console.warn('[NEON] Warning: Could not ensure system user exists:', sysUserError.message);
+    }
+
     tablesInitialized = true;
     console.log('[NEON] ✅ All tables initialized successfully');
   } catch (error: any) {

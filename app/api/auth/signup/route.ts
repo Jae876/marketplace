@@ -180,7 +180,7 @@ Your safety and satisfaction are our top priorities. Happy shopping, and welcome
 
       await db.createItemMessage({
         id: `welcome_${userId}`,
-        transactionId: `welcome_${Date.now()}`,
+        transactionId: undefined,
         buyerId: userId,
         sellerId: 'system',
         productName: '👋 Welcome to Russian Roulette',
@@ -188,6 +188,7 @@ Your safety and satisfaction are our top priorities. Happy shopping, and welcome
         amount: 0,
         cryptocurrency: 'welcome',
         isRead: false,
+        isWelcome: true,
         createdAt: new Date().toISOString(),
       });
       console.log('[SIGNUP] Welcome message created for user:', userId);
