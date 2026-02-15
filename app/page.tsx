@@ -33,6 +33,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
@@ -62,11 +64,16 @@ export default function HomePage() {
     }
   };
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (query = '') => {
     try {
       setLoading(true);
-      const response = await fetch('/api/products', {
-        cache: 'no-store', // Prevent caching
+      const url = new URL('/api/products', window.location.origin);
+      if (query.trim()) {
+        url.searchParams.append('search', query.trim());
+      }
+      
+      const response = await fetch(url.toString(), {
+        cache: 'no-store',
       });
       
       const text = await response.text();
@@ -93,6 +100,19 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSearching(true);
+    await fetchProducts(searchQuery);
+    setIsSearching(false);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setIsSearching(true);
+    fetchProducts('').then(() => setIsSearching(false));
   };
 
   const handleLogout = () => {
@@ -177,73 +197,139 @@ export default function HomePage() {
             Welcome to Russian Roulette
           </h2>
           <p className="text-xl text-gray-300 mb-2">Premium Marketplace Experience</p>
-          <p className="text-gray-400">Discover exclusive items and opportunities in our marketplace</p>
+          <p className="text-gray-400 mb-8">Discover exclusive items and opportunities in our marketplace</p>
+          
+          {/* Search Bar */}
+          <form onSubmit={handleSearch} className="max-w-2xl">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search for products... (name, description, region, type)"
+                className="w-full px-6 py-4 pl-12 bg-slate-800/80 border border-purple-500/40 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all backdrop-blur-sm"
+              />
+              <button
+                type="submit"
+                disabled={isSearching || loading}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-purple-400 hover:text-purple-300 disabled:opacity-50 transition-colors"
+                title="Search"
+              >
+                {isSearching ? (
+                  <div className="inline-block animate-spin rounded-full w-5 h-5 border-b-2 border-purple-400"></div>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                )}
+              </button>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-400 transition-colors"
+                  title="Clear search"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              💡 Tip: Search by product name, description, region, or type for best results
+            </p>
+          </form>
         </div>
 
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+            <p className="text-gray-400 mt-4">Loading products...</p>
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-400">No products available. Check back later!</p>
-            {!token && (
-              <div className="mt-6">
-                <Link
-                  href="/signup"
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg text-sm font-medium transition-all inline-block"
+            {searchQuery ? (
+              <>
+                <p className="text-gray-400 mb-2">No products found matching "{searchQuery}"</p>
+                <button
+                  onClick={handleClearSearch}
+                  className="text-purple-400 hover:text-purple-300 underline transition-colors text-sm"
                 >
-                  Sign Up to Browse Products
-                </Link>
-              </div>
+                  Clear search to see all products
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-gray-400">No products available. Check back later!</p>
+                {!token && (
+                  <div className="mt-6">
+                    <Link
+                      href="/signup"
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg text-sm font-medium transition-all inline-block"
+                    >
+                      Sign Up to Browse Products
+                    </Link>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.slice(0, 6).map((product) => (
-              <Link
-                key={product.id}
-                href={token ? `/product/${product.id}` : '/login'}
-                className="bg-slate-800/60 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden hover:shadow-red-500/20 hover:scale-105 transition-all border border-purple-700/40 hover:border-red-500/60 group"
-              >
-                {product.image && (
-                  <div className="relative overflow-hidden h-48">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
-                  </div>
-                )}
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-100 mb-2">
-                    {product.name}
-                  </h3>
-                  <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-                    {product.description}
-                  </p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                      ${product.price.toFixed(2)}
-                    </span>
-                    <div className="text-sm">
-                      <span className="bg-purple-600/30 text-purple-300 px-2 py-1 rounded">
-                        {product.region}
-                      </span>
-                    </div>
-                  </div>
-                  {product.type && (
-                    <div className="mt-2">
-                      <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
-                        {product.type}
-                      </span>
+          <>
+            {searchQuery && (
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-gray-400 text-sm">
+                  Found <span className="text-purple-300 font-semibold">{products.length}</span> product{products.length !== 1 ? 's' : ''} matching "{searchQuery}"
+                </p>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {(searchQuery ? products : products.slice(0, 6)).map((product) => (
+                <Link
+                  key={product.id}
+                  href={token ? `/product/${product.id}` : '/login'}
+                  className="bg-slate-800/60 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden hover:shadow-red-500/20 hover:scale-105 transition-all border border-purple-700/40 hover:border-red-500/60 group"
+                >
+                  {product.image && (
+                    <div className="relative overflow-hidden h-48">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
                     </div>
                   )}
-                </div>
-              </Link>
-            ))}
-          </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold text-gray-100 mb-2">
+                      {product.name}
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                      {product.description}
+                    </p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        ${product.price.toFixed(2)}
+                      </span>
+                      <div className="text-sm">
+                        <span className="bg-purple-600/30 text-purple-300 px-2 py-1 rounded">
+                          {product.region}
+                        </span>
+                      </div>
+                    </div>
+                    {product.type && (
+                      <div className="mt-2">
+                        <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
+                          {product.type}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
         )}
       </main>
 
