@@ -164,7 +164,11 @@ interface Transaction {
   cryptocurrency: string;
   walletAddress: string;
   status: string;
+  paymentConfirmedByAdmin: boolean;
+  buyerConfirmedRelease: boolean;
+  itemDeliveryContent?: string;
   createdAt: string;
+  confirmedAt?: string;
 }
 
 interface ItemMessage {
