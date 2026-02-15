@@ -72,11 +72,20 @@ export default function MessageCenter() {
       // Only show welcome modal for regular users (must have firstName in localStorage from login/signup)
       const firstName = localStorage.getItem('userFirstName');
       const welcomeMsg = messages.find(m => (m as any).isWelcome === true && !m.isRead);
+      
+      // Only show if welcome message exists, is unread, AND we haven't already shown it this session
       if (welcomeMsg && !showWelcomeModal && firstName) {
+        console.log('[WELCOME] Auto-opening welcome modal for user:', firstName);
         setShowWelcomeModal(true);
+      } else if (!welcomeMsg || welcomeMsg.isRead) {
+        // No unread welcome message exists - ensure modal is closed
+        if (showWelcomeModal) {
+          console.log('[WELCOME] No unread welcome message found, closing modal');
+          setShowWelcomeModal(false);
+        }
       }
     }
-  }, [messages, isLoggedIn, showWelcomeModal]);
+  }, [messages, isLoggedIn]);
 
   const fetchMessages = async () => {
     try {
@@ -138,15 +147,18 @@ export default function MessageCenter() {
 
   const handleConfirmDelivery = async () => {
     if (!selectedMessage?.transactionId) {
-      setDeliveryError('Transaction ID not found');
+      console.error('[DELIVERY] Missing transactionId:', selectedMessage);
+      setDeliveryError('Transaction ID not found. Please contact support.');
       return;
     }
 
-    setConfirmingDelivery(true);
-    setDeliveryError('');
-
     try {
+      setConfirmingDelivery(true);
+      setDeliveryError('');
       const token = localStorage.getItem('token');
+      
+      console.log('[DELIVERY] Confirming delivery for transaction:', selectedMessage.transactionId);
+      
       const response = await fetch('/api/payment/confirm', {
         method: 'PUT',
         headers: {
@@ -159,15 +171,20 @@ export default function MessageCenter() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to confirm delivery');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error || 'Failed to confirm delivery';
+        console.error('[DELIVERY] Error response:', errorMsg);
+        throw new Error(errorMsg);
       }
 
+      console.log('[DELIVERY] Delivery confirmed successfully');
       // Refresh messages and close modal
-      fetchMessages();
+      await fetchMessages();
       closeDetailView();
     } catch (error) {
-      setDeliveryError(error instanceof Error ? error.message : 'Failed to confirm delivery');
+      const message = error instanceof Error ? error.message : 'Failed to confirm delivery';
+      console.error('[DELIVERY] Error confirming:', message);
+      setDeliveryError(message);
     } finally {
       setConfirmingDelivery(false);
     }
@@ -299,22 +316,26 @@ export default function MessageCenter() {
             <div className="border-t border-slate-700/50 px-6 py-4">
               {deliveryError && (
                 <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded text-red-300 text-sm">
-                  {deliveryError}
+                  ⚠️ {deliveryError}
                 </div>
               )}
               <div className="flex gap-3">
-                {selectedMessage?.type === 'delivery' && selectedMessage?.itemDetails?.status === 'delivered' && (
+                {/* Show delivery confirmation button ONLY for actual item delivery messages */}
+                {selectedMessage?.type === 'delivery' && 
+                 selectedMessage?.itemDetails?.status === 'delivered' &&
+                 selectedMessage?.transactionId &&
+                 !selectedMessage?.transactionId.startsWith('welcome_') ? (
                   <button
                     onClick={handleConfirmDelivery}
                     disabled={confirmingDelivery}
                     className="flex-1 px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-slate-600 disabled:to-slate-600 text-white rounded-lg font-medium transition-all"
                   >
-                    {confirmingDelivery ? 'Confirming...' : '✅ Confirm Receipt & Release Payment'}
+                    {confirmingDelivery ? '⏳ Processing...' : '✅ Received & Release Funds'}
                   </button>
-                )}
+                ) : null}
                 <button
                   onClick={closeDetailView}
-                  className={`${selectedMessage?.type === 'delivery' && selectedMessage?.itemDetails?.status === 'delivered' ? 'flex-1' : 'w-full'} px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg font-light transition-all`}
+                  className={`${selectedMessage?.type === 'delivery' && selectedMessage?.itemDetails?.status === 'delivered' && selectedMessage?.transactionId ? 'flex-1' : 'w-full'} px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg font-light transition-all`}
                 >
                   Close
                 </button>

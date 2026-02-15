@@ -23,15 +23,32 @@ export async function POST(
 
     const messageId = params.id;
 
-    // If it's an item message, mark it as read in database
+    // If it's a prefixed message, extract actual ID and mark as read
     if (messageId.startsWith('item-')) {
       const actualId = messageId.substring(5); // Remove 'item-' prefix
+      console.log('[READ] Marking item message as read:', actualId);
       await db.markItemMessageAsRead(actualId);
       return NextResponse.json({ success: true });
     }
 
-    // For other message types, just acknowledge
-    // In a real implementation, you'd store read status in database
+    if (messageId.startsWith('welcome-')) {
+      const actualId = messageId.substring(8); // Remove 'welcome-' prefix
+      console.log('[READ] Marking welcome message as read:', actualId);
+      await db.markItemMessageAsRead(actualId);
+      return NextResponse.json({ success: true });
+    }
+
+    // For other prefixed message types (deposit-, paid-, etc), extract and handle
+    if (messageId.includes('-')) {
+      const lastDash = messageId.lastIndexOf('-');
+      const actualId = messageId.substring(lastDash + 1);
+      console.log('[READ] Marking message as read:', actualId);
+      // For transaction-based messages, marking read doesn't need database update
+      // They're transient notifications
+      return NextResponse.json({ success: true });
+    }
+
+    // For unprefixed messages, just acknowledge
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Mark as read error:', error);

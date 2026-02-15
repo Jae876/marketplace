@@ -42,16 +42,16 @@ export async function GET(request: NextRequest) {
     itemMessages.filter((m: any) => !m.id.startsWith('welcome_')).forEach((itemMsg: any) => {
       messages.push({
         id: `item-${itemMsg.id}`,
-        title: `📦 Item Delivery: ${itemMsg.productName}`,
-        content: `Your item has been delivered!\n\n${itemMsg.itemContent}`,
+        title: `📦 Item Delivered: ${itemMsg.productName}`,
+        content: itemMsg.itemContent || 'Your item has been delivered!',
         type: 'delivery',
-        transactionId: itemMsg.transactionId,
+        transactionId: itemMsg.transactionId || undefined,
         isRead: itemMsg.isRead,
         createdAt: new Date(itemMsg.createdAt),
         itemDetails: {
-          productName: itemMsg.productName,
-          amount: itemMsg.amount,
-          cryptocurrency: itemMsg.cryptocurrency,
+          productName: itemMsg.productName || 'Unknown Product',
+          amount: itemMsg.amount || 0,
+          cryptocurrency: itemMsg.cryptocurrency || 'unknown',
           status: 'delivered',
         },
       });
