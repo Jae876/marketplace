@@ -187,6 +187,17 @@ function normalizeWallets(wallets: any[]): Wallet[] {
   return wallets.map(normalizeWallet);
 }
 
+function normalizeItemMessage(message: any): ItemMessage {
+  return {
+    ...message,
+    amount: typeof message.amount === 'string' ? parseFloat(message.amount) : message.amount,
+  };
+}
+
+function normalizeItemMessages(messages: any[]): ItemMessage[] {
+  return messages.map(normalizeItemMessage);
+}
+
 export class PostgresDatabase {
   async createUser(user: User): Promise<void> {
     await initializeTables();
@@ -379,15 +390,17 @@ export class PostgresDatabase {
 
   async getItemMessages(receiverId: string): Promise<ItemMessage[]> {
     await initializeTables();
-    return (await sql`
+    const result = await sql`
       SELECT * FROM item_messages WHERE "buyerId" = ${receiverId} OR "sellerId" = ${receiverId} ORDER BY "createdAt" DESC
-    `) as ItemMessage[];
+    `;
+    return normalizeItemMessages(result as any[]);
   }
 
   async getItemMessage(id: string): Promise<ItemMessage | null> {
     await initializeTables();
     const result = await sql`SELECT * FROM item_messages WHERE id = ${id}`;
-    return (result as any[])[0] || null;
+    const message = (result as any[])[0];
+    return message ? normalizeItemMessage(message) : null;
   }
 
   async deleteItemMessage(id: string): Promise<void> {

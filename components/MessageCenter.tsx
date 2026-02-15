@@ -289,21 +289,26 @@ export default function MessageCenter() {
                   <div className="mt-6 bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
                     <h3 className="text-lg font-semibold text-slate-100 mb-3">📦 Item Details</h3>
                     <div className="space-y-2 text-sm text-slate-300">
-                      <p><span className="font-semibold">Product:</span> {selectedMessage.itemDetails.productName}</p>
-                      <p><span className="font-semibold">Amount:</span> ${selectedMessage.itemDetails.amount.toFixed(2)}</p>
-                      <p><span className="font-semibold">Cryptocurrency:</span> {selectedMessage.itemDetails.cryptocurrency.toUpperCase()}</p>
-                      <p><span className="font-semibold">Wallet Address:</span></p>
-                      <p className="font-mono text-xs bg-slate-900 p-2 rounded break-all">
-                        {selectedMessage.itemDetails.walletAddress}
-                      </p>
+                      <p><span className="font-semibold">Product:</span> {selectedMessage.itemDetails?.productName || 'Unknown Product'}</p>
+                      <p><span className="font-semibold">Amount:</span> ${typeof selectedMessage.itemDetails?.amount === 'number' ? selectedMessage.itemDetails.amount.toFixed(2) : (typeof selectedMessage.itemDetails?.amount === 'string' ? parseFloat(selectedMessage.itemDetails.amount).toFixed(2) : '0.00')}</p>
+                      <p><span className="font-semibold">Cryptocurrency:</span> {selectedMessage.itemDetails?.cryptocurrency?.toUpperCase() || 'UNKNOWN'}</p>
+                      {selectedMessage.itemDetails?.walletAddress && (
+                        <>
+                          <p><span className="font-semibold">Wallet Address:</span></p>
+                          <p className="font-mono text-xs bg-slate-900 p-2 rounded break-all">
+                            {selectedMessage.itemDetails.walletAddress}
+                          </p>
+                        </>
+                      )}
                       <p><span className="font-semibold">Status:</span> 
                         <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
-                          selectedMessage.itemDetails.status === 'completed' ? 'bg-green-500/20 text-green-300' :
-                          selectedMessage.itemDetails.status === 'paid' ? 'bg-blue-500/20 text-blue-300' :
-                          selectedMessage.itemDetails.status === 'deposit_confirmed' ? 'bg-yellow-500/20 text-yellow-300' :
+                          selectedMessage.itemDetails?.status === 'completed' ? 'bg-green-500/20 text-green-300' :
+                          selectedMessage.itemDetails?.status === 'paid' ? 'bg-blue-500/20 text-blue-300' :
+                          selectedMessage.itemDetails?.status === 'deposit_confirmed' ? 'bg-yellow-500/20 text-yellow-300' :
+                          selectedMessage.itemDetails?.status === 'delivered' ? 'bg-purple-500/20 text-purple-300' :
                           'bg-slate-500/20 text-slate-300'
                         }`}>
-                          {selectedMessage.itemDetails.status}
+                          {selectedMessage.itemDetails?.status || 'unknown'}
                         </span>
                       </p>
                     </div>
