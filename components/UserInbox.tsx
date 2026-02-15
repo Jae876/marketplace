@@ -182,13 +182,20 @@ export default function UserInbox() {
                 >
                   Close
                 </button>
-                <button
-                  onClick={() => releaseFunds(selectedMessage.transactionId)}
-                  disabled={releasingFunds}
-                  className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
-                >
-                  {releasingFunds ? '⏳ Releasing...' : '💰 Release Funds'}
-                </button>
+                {/* Only show release funds button for actual delivery messages (not system notifications) */}
+                {selectedMessage.productName && 
+                 !selectedMessage.productName.startsWith('👋') &&
+                 !selectedMessage.productName.startsWith('✅') &&
+                 !selectedMessage.productName.startsWith('💰') &&
+                 selectedMessage.transactionId && !selectedMessage.transactionId.startsWith('welcome_') ? (
+                  <button
+                    onClick={() => releaseFunds(selectedMessage.transactionId)}
+                    disabled={releasingFunds}
+                    className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
+                  >
+                    {releasingFunds ? '⏳ Releasing...' : '💰 Release Funds'}
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
