@@ -131,6 +131,40 @@ async function initializeTables() {
   }
 }
 
+// Helper functions to convert numeric fields from string to number
+function normalizeProduct(product: any): Product {
+  return {
+    ...product,
+    price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
+  };
+}
+
+function normalizeProducts(products: any[]): Product[] {
+  return products.map(normalizeProduct);
+}
+
+function normalizeTransaction(transaction: any): Transaction {
+  return {
+    ...transaction,
+    amount: typeof transaction.amount === 'string' ? parseFloat(transaction.amount) : transaction.amount,
+  };
+}
+
+function normalizeTransactions(transactions: any[]): Transaction[] {
+  return transactions.map(normalizeTransaction);
+}
+
+function normalizeWallet(wallet: any): Wallet {
+  return {
+    ...wallet,
+    balance: typeof wallet.balance === 'string' ? parseFloat(wallet.balance) : wallet.balance,
+  };
+}
+
+function normalizeWallets(wallets: any[]): Wallet[] {
+  return wallets.map(normalizeWallet);
+}
+
 export class PostgresDatabase {
   async createUser(user: User): Promise<void> {
     await initializeTables();
@@ -200,12 +234,14 @@ export class PostgresDatabase {
   async getProduct(id: string): Promise<Product | null> {
     await initializeTables();
     const result = await sql`SELECT * FROM products WHERE id = ${id}`;
-    return (result as any[])[0] || null;
+    const product = (result as any[])[0];
+    return product ? normalizeProduct(product) : null;
   }
 
   async getAllProducts(): Promise<Product[]> {
     await initializeTables();
-    return (await sql`SELECT * FROM products ORDER BY "createdAt" DESC`) as Product[];
+    const result = await sql`SELECT * FROM products ORDER BY "createdAt" DESC`;
+    return normalizeProducts(result as any[]);
   }
 
   async updateProduct(id: string, product: Partial<Product>): Promise<boolean> {
@@ -264,19 +300,22 @@ export class PostgresDatabase {
   async getTransaction(id: string): Promise<Transaction | null> {
     await initializeTables();
     const result = await sql`SELECT * FROM transactions WHERE id = ${id}`;
-    return (result as any[])[0] || null;
+    const transaction = (result as any[])[0];
+    return transaction ? normalizeTransaction(transaction) : null;
   }
 
   async getTransactionsByUser(userId: string): Promise<Transaction[]> {
     await initializeTables();
-    return (await sql`
+    const result = await sql`
       SELECT * FROM transactions WHERE "buyerId" = ${userId} OR "sellerId" = ${userId} ORDER BY "createdAt" DESC
-    `) as Transaction[];
+    `;
+    return normalizeTransactions(result as any[]);
   }
 
   async getAllTransactions(): Promise<Transaction[]> {
     await initializeTables();
-    return (await sql`SELECT * FROM transactions ORDER BY "createdAt" DESC`) as Transaction[];
+    const result = await sql`SELECT * FROM transactions ORDER BY "createdAt" DESC`;
+    return normalizeTransactions(result as any[]);
   }
 
   async updateTransaction(id: string, transaction: Partial<Transaction>): Promise<void> {
@@ -345,7 +384,8 @@ export class PostgresDatabase {
   async getWallet(userId: string): Promise<Wallet | null> {
     await initializeTables();
     const result = await sql`SELECT * FROM wallets WHERE "userId" = ${userId}`;
-    return (result as any[])[0] || null;
+    const wallet = (result as any[])[0];
+    return wallet ? normalizeWallet(wallet) : null;
   }
 
   async updateWallet(userId: string, wallet: Partial<Wallet>): Promise<void> {
@@ -369,12 +409,14 @@ export class PostgresDatabase {
   async getWalletByAddress(address: string): Promise<Wallet | null> {
     await initializeTables();
     const result = await sql`SELECT * FROM wallets WHERE address = ${address}`;
-    return (result as any[])[0] || null;
+    const wallet = (result as any[])[0];
+    return wallet ? normalizeWallet(wallet) : null;
   }
 
   async getAllWallets(): Promise<Wallet[]> {
     await initializeTables();
-    return (await sql`SELECT * FROM wallets`) as Wallet[];
+    const result = await sql`SELECT * FROM wallets`;
+    return normalizeWallets(result as any[]);
   }
 
   // Compatibility methods
