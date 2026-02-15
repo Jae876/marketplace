@@ -228,31 +228,20 @@ export class PostgresDatabase {
 
   async updateUser(id: string, user: Partial<User>): Promise<void> {
     await initializeTables();
-    const updates: string[] = [];
-    const values: any[] = [];
-
-    Object.entries(user).forEach(([key, value]) => {
-      if (key !== 'id' && value !== undefined) {
-        updates.push(`"${key}" = ${value}`);
-      }
-    });
-
-    if (updates.length === 0) return;
-
-    // Build dynamic update query
-    let query = `UPDATE users SET `;
-    let first = true;
-    for (const [key, value] of Object.entries(user)) {
-      if (key !== 'id' && value !== undefined) {
-        if (!first) query += ', ';
-        query += `"${key}" = '${value}'`;
-        first = false;
-      }
+    
+    // Only update fields that are actually provided
+    if (user.firstName) {
+      await sql`UPDATE users SET "firstName" = ${user.firstName} WHERE id = ${id}`;
     }
-    query += ` WHERE id = '${id}'`;
-
-    // Use SQL directly to avoid parameter issues
-    await sql.query(query);
+    if (user.lastName) {
+      await sql`UPDATE users SET "lastName" = ${user.lastName} WHERE id = ${id}`;
+    }
+    if (user.balance !== undefined) {
+      await sql`UPDATE users SET balance = ${user.balance} WHERE id = ${id}`;
+    }
+    if (user.trustScore !== undefined) {
+      await sql`UPDATE users SET "trustScore" = ${user.trustScore} WHERE id = ${id}`;
+    }
   }
 
   async deleteUser(id: string): Promise<void> {
@@ -282,21 +271,33 @@ export class PostgresDatabase {
 
   async updateProduct(id: string, product: Partial<Product>): Promise<boolean> {
     await initializeTables();
-    let query = `UPDATE products SET `;
-    let first = true;
-    for (const [key, value] of Object.entries(product)) {
-      if (key !== 'id' && value !== undefined) {
-        if (!first) query += ', ';
-        query += `"${key}" = '${value}'`;
-        first = false;
-      }
-    }
-    query += ` WHERE id = '${id}'`;
     
     try {
-      await sql.query(query);
+      // Update each field individually since Neon only supports tagged templates
+      if (product.name) {
+        await sql`UPDATE products SET name = ${product.name} WHERE id = ${id}`;
+      }
+      if (product.description) {
+        await sql`UPDATE products SET description = ${product.description} WHERE id = ${id}`;
+      }
+      if (product.price !== undefined) {
+        await sql`UPDATE products SET price = ${product.price} WHERE id = ${id}`;
+      }
+      if (product.region) {
+        await sql`UPDATE products SET region = ${product.region} WHERE id = ${id}`;
+      }
+      if (product.type) {
+        await sql`UPDATE products SET type = ${product.type} WHERE id = ${id}`;
+      }
+      if (product.size) {
+        await sql`UPDATE products SET size = ${product.size} WHERE id = ${id}`;
+      }
+      if (product.image) {
+        await sql`UPDATE products SET image = ${product.image} WHERE id = ${id}`;
+      }
       return true;
     } catch (error) {
+      console.error('[DB] updateProduct error:', error);
       return false;
     }
   }
@@ -340,18 +341,29 @@ export class PostgresDatabase {
 
   async updateTransaction(id: string, transaction: Partial<Transaction>): Promise<void> {
     await initializeTables();
-    let query = `UPDATE transactions SET `;
-    let first = true;
-    for (const [key, value] of Object.entries(transaction)) {
-      if (key !== 'id' && value !== undefined) {
-        if (!first) query += ', ';
-        query += `"${key}" = '${value}'`;
-        first = false;
-      }
-    }
-    query += ` WHERE id = '${id}'`;
     
-    await sql.query(query);
+    const tx = transaction as any;
+    try {
+      // Update transaction fields individually
+      if (tx.status) {
+        await sql`UPDATE transactions SET status = ${tx.status} WHERE id = ${id}`;
+      }
+      if (tx.paymentConfirmedByAdmin !== undefined) {
+        await sql`UPDATE transactions SET "paymentConfirmedByAdmin" = ${tx.paymentConfirmedByAdmin} WHERE id = ${id}`;
+      }
+      if (tx.buyerConfirmedRelease !== undefined) {
+        await sql`UPDATE transactions SET "buyerConfirmedRelease" = ${tx.buyerConfirmedRelease} WHERE id = ${id}`;
+      }
+      if (tx.itemDeliveryContent) {
+        await sql`UPDATE transactions SET "itemDeliveryContent" = ${tx.itemDeliveryContent} WHERE id = ${id}`;
+      }
+      if (tx.confirmedAt) {
+        await sql`UPDATE transactions SET "confirmedAt" = ${tx.confirmedAt} WHERE id = ${id}`;
+      }
+    } catch (error) {
+      console.error('[DB] updateTransaction error:', error);
+      throw error;
+    }
   }
 
   async createItemMessage(message: ItemMessage): Promise<void> {
@@ -398,18 +410,19 @@ export class PostgresDatabase {
 
   async updateWallet(userId: string, wallet: Partial<Wallet>): Promise<void> {
     await initializeTables();
-    let query = `UPDATE wallets SET `;
-    let first = true;
-    for (const [key, value] of Object.entries(wallet)) {
-      if (key !== 'userId' && value !== undefined) {
-        if (!first) query += ', ';
-        query += `"${key}" = '${value}'`;
-        first = false;
-      }
-    }
-    query += ` WHERE "userId" = '${userId}'`;
     
-    await sql.query(query);
+    try {
+      // Update wallet fields individually
+      if (wallet.address) {
+        await sql`UPDATE wallets SET address = ${wallet.address} WHERE "userId" = ${userId}`;
+      }
+      if (wallet.balance !== undefined) {
+        await sql`UPDATE wallets SET balance = ${wallet.balance} WHERE "userId" = ${userId}`;
+      }
+    } catch (error) {
+      console.error('[DB] updateWallet error:', error);
+      throw error;
+    }
   }
 
   async getWalletByAddress(address: string): Promise<Wallet | null> {
