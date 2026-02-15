@@ -167,18 +167,19 @@ export class PostgresDatabase {
   async updateUser(id: string, user: Partial<User>): Promise<void> {
     await initializeTables();
     
+    const u = user as any;
     // Only update fields that are actually provided
-    if (user.firstName) {
-      await sql`UPDATE users SET "firstName" = ${user.firstName} WHERE id = ${id}`;
+    if (u.firstName) {
+      await sql`UPDATE users SET "firstName" = ${u.firstName} WHERE id = ${id}`;
     }
-    if (user.lastName) {
-      await sql`UPDATE users SET "lastName" = ${user.lastName} WHERE id = ${id}`;
+    if (u.lastName) {
+      await sql`UPDATE users SET "lastName" = ${u.lastName} WHERE id = ${id}`;
     }
-    if (user.balance !== undefined) {
-      await sql`UPDATE users SET balance = ${user.balance} WHERE id = ${id}`;
+    if (u.balance !== undefined) {
+      await sql`UPDATE users SET balance = ${u.balance} WHERE id = ${id}`;
     }
-    if (user.trustScore !== undefined) {
-      await sql`UPDATE users SET "trustScore" = ${user.trustScore} WHERE id = ${id}`;
+    if (u.trustScore !== undefined) {
+      await sql`UPDATE users SET "trustScore" = ${u.trustScore} WHERE id = ${id}`;
     }
   }
 
@@ -210,28 +211,29 @@ export class PostgresDatabase {
   async updateProduct(id: string, product: Partial<Product>): Promise<boolean> {
     await initializeTables();
     
+    const p = product as any;
     try {
       // Update each field individually since Neon only supports tagged templates
-      if (product.name) {
-        await sql`UPDATE products SET name = ${product.name} WHERE id = ${id}`;
+      if (p.name) {
+        await sql`UPDATE products SET name = ${p.name} WHERE id = ${id}`;
       }
-      if (product.description) {
-        await sql`UPDATE products SET description = ${product.description} WHERE id = ${id}`;
+      if (p.description) {
+        await sql`UPDATE products SET description = ${p.description} WHERE id = ${id}`;
       }
-      if (product.price !== undefined) {
-        await sql`UPDATE products SET price = ${product.price} WHERE id = ${id}`;
+      if (p.price !== undefined) {
+        await sql`UPDATE products SET price = ${p.price} WHERE id = ${id}`;
       }
-      if (product.region) {
-        await sql`UPDATE products SET region = ${product.region} WHERE id = ${id}`;
+      if (p.region) {
+        await sql`UPDATE products SET region = ${p.region} WHERE id = ${id}`;
       }
-      if (product.type) {
-        await sql`UPDATE products SET type = ${product.type} WHERE id = ${id}`;
+      if (p.type) {
+        await sql`UPDATE products SET type = ${p.type} WHERE id = ${id}`;
       }
-      if (product.size) {
-        await sql`UPDATE products SET size = ${product.size} WHERE id = ${id}`;
+      if (p.size) {
+        await sql`UPDATE products SET size = ${p.size} WHERE id = ${id}`;
       }
-      if (product.image) {
-        await sql`UPDATE products SET image = ${product.image} WHERE id = ${id}`;
+      if (p.image) {
+        await sql`UPDATE products SET image = ${p.image} WHERE id = ${id}`;
       }
       return true;
     } catch (error) {
@@ -349,13 +351,14 @@ export class PostgresDatabase {
   async updateWallet(userId: string, wallet: Partial<Wallet>): Promise<void> {
     await initializeTables();
     
+    const w = wallet as any;
     try {
       // Update wallet fields individually
-      if (wallet.address) {
-        await sql`UPDATE wallets SET address = ${wallet.address} WHERE "userId" = ${userId}`;
+      if (w.address) {
+        await sql`UPDATE wallets SET address = ${w.address} WHERE "userId" = ${userId}`;
       }
-      if (wallet.balance !== undefined) {
-        await sql`UPDATE wallets SET balance = ${wallet.balance} WHERE "userId" = ${userId}`;
+      if (w.balance !== undefined) {
+        await sql`UPDATE wallets SET balance = ${w.balance} WHERE "userId" = ${userId}`;
       }
     } catch (error) {
       console.error('[DB] updateWallet error:', error);
