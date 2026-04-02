@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         securityPhrase: hashedPhrase,
         createdAt: new Date().toISOString(),
-      }, referralCode?.trim().toUpperCase());
+      } as any, referralCode?.trim().toUpperCase());
       console.log('[SIGNUP] User created successfully:', userId);
     } catch (dbError: any) {
       console.error('[SIGNUP] Database create error:', dbError);

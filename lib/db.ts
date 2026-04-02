@@ -168,7 +168,7 @@ class Database {
     return this.getUsers().find(u => u.id === id);
   }
 
-  createUser(user: User, referralCode?: string): void {
+  createUser(user: User, referrerCode?: string): void {
     const users = this.getUsers();
     // Initialize balance and trustScore for new users
     const newUser: User = {
@@ -469,11 +469,11 @@ class DatabaseWrapper {
   }
 
   // User methods
-  async createUser(user: User, referralCode?: string): Promise<void> {
+  async createUser(user: User, referrerCode?: string): Promise<void> {
     if (this.isAsync) {
-      return await this.backend.createUser(user, referralCode);
+      return await this.backend.createUser(user, referrerCode);
     } else {
-      this.backend.createUser(user, referralCode);
+      this.backend.createUser(user, referrerCode);
     }
   }
 

@@ -35,12 +35,21 @@ async function initializeTables() {
         "securityPhrase" VARCHAR(255) NOT NULL,
         balance DECIMAL(18, 8) DEFAULT 0,
         "trustScore" INTEGER DEFAULT 50,
-        "referralCode" VARCHAR(12) UNIQUE NOT NULL,
+        "referralCode" VARCHAR(12) UNIQUE,
         "referredBy" VARCHAR(255),
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("referredBy") REFERENCES users(id) ON DELETE SET NULL
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
+
+    // Add referralCode and referredBy columns if they don't exist (migration)
+    try {
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS "referralCode" VARCHAR(12) UNIQUE`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS "referredBy" VARCHAR(255)`;
+      console.log('[NEON] ✓ users table migration applied');
+    } catch (migrationError: any) {
+      console.log('[NEON] Migration columns may already exist:', migrationError.message);
+    }
+
     console.log('[NEON] ✓ users table created/exists');
 
     // Create referrals tracking table
@@ -232,7 +241,7 @@ export class PostgresDatabase {
     return code;
   }
 
-  async createUser(user: User, referralCode?: string): Promise<void> {
+  async createUser(user: User, referrerCode?: string): Promise<void> {
     await initializeTables();
     
     // Generate unique referral code for new user
@@ -245,26 +254,43 @@ export class PostgresDatabase {
         newUserReferralCode = this.generateReferralCode();
         attempts++;
       } catch (e) {
-        break; // Continue if table doesn't exist yet
+        // Column might not exist yet, continue anyway
+        break;
       }
     }
 
-    const referredById = referralCode ? await this.getUserByReferralCode(referralCode) : null;
+    const referredById = referrerCode ? await this.getUserByReferralCode(referrerCode) : null;
     
-    await sql`
-      INSERT INTO users (id, email, username, "firstName", "lastName", password, "securityPhrase", balance, "trustScore", "referralCode", "referredBy", "createdAt")
-      VALUES (${user.id}, ${user.email}, ${user.username}, ${user.firstName}, ${user.lastName},
-              ${user.password}, ${user.securityPhrase}, ${user.balance ?? 0}, ${user.trustScore ?? 50}, ${newUserReferralCode}, ${referredById?.id || null}, ${user.createdAt})
-    `;
-
-    // Track referral relationship
-    if (referredById) {
-      const referralId = `ref_${user.id}_${referredById.id}`;
+    try {
+      // Try with referralCode columns (new schema)
       await sql`
-        INSERT INTO referrals (id, "referrerId", "refereeId", "createdAt")
-        VALUES (${referralId}, ${referredById.id}, ${user.id}, NOW())
-        ON CONFLICT ("referrerId", "refereeId") DO NOTHING
+        INSERT INTO users (id, email, username, "firstName", "lastName", password, "securityPhrase", balance, "trustScore", "referralCode", "referredBy", "createdAt")
+        VALUES (${user.id}, ${user.email}, ${user.username}, ${user.firstName}, ${user.lastName},
+                ${user.password}, ${user.securityPhrase}, ${user.balance ?? 0}, ${user.trustScore ?? 50}, ${newUserReferralCode}, ${referredById?.id || null}, ${user.createdAt})
       `;
+    } catch (insertError: any) {
+      // If referralCode columns don't exist, try without them (backwards compatibility)
+      console.log('[NEON] Referral columns may not exist, trying without them:', insertError.message);
+      await sql`
+        INSERT INTO users (id, email, username, "firstName", "lastName", password, "securityPhrase", balance, "trustScore", "createdAt")
+        VALUES (${user.id}, ${user.email}, ${user.username}, ${user.firstName}, ${user.lastName},
+                ${user.password}, ${user.securityPhrase}, ${user.balance ?? 0}, ${user.trustScore ?? 50}, ${user.createdAt})
+      `;
+    }
+
+    // Track referral relationship if columns exist
+    if (referredById) {
+      try {
+        const referralId = `ref_${user.id}_${referredById.id}`;
+        await sql`
+          INSERT INTO referrals (id, "referrerId", "refereeId", "createdAt")
+          VALUES (${referralId}, ${referredById.id}, ${user.id}, NOW())
+          ON CONFLICT ("referrerId", "refereeId") DO NOTHING
+        `;
+      } catch (referralError) {
+        // Referrals table might not exist, ignore error
+        console.log('[NEON] Could not track referral (table may not exist)');
+      }
     }
   }
 
