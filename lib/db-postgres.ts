@@ -35,10 +35,30 @@ async function initializeTables() {
         "securityPhrase" VARCHAR(255) NOT NULL,
         balance DECIMAL(18, 8) DEFAULT 0,
         "trustScore" INTEGER DEFAULT 50,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        "referralCode" VARCHAR(12) UNIQUE NOT NULL,
+        "referredBy" VARCHAR(255),
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY ("referredBy") REFERENCES users(id) ON DELETE SET NULL
       )
     `;
     console.log('[NEON] ✓ users table created/exists');
+
+    // Create referrals tracking table
+    await sql`
+      CREATE TABLE IF NOT EXISTS referrals (
+        id VARCHAR(255) PRIMARY KEY,
+        "referrerId" VARCHAR(255) NOT NULL,
+        "refereeId" VARCHAR(255) NOT NULL,
+        "qualifiedAt" TIMESTAMP,
+        "rewardGiven" BOOLEAN DEFAULT FALSE,
+        "rewardGivenAt" TIMESTAMP,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY ("referrerId") REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY ("refereeId") REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE("referrerId", "refereeId")
+      )
+    `;
+    console.log('[NEON] ✓ referrals table created/exists');
 
     // Create products table
     await sql`
@@ -199,13 +219,53 @@ function normalizeItemMessages(messages: any[]): ItemMessage[] {
 }
 
 export class PostgresDatabase {
-  async createUser(user: User): Promise<void> {
+  /**
+   * Generate a unique referral code (6 alphanumeric characters)
+   * Format: XXXXXX (uppercase letters and numbers)
+   */
+  private generateReferralCode(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  async createUser(user: User, referralCode?: string): Promise<void> {
     await initializeTables();
+    
+    // Generate unique referral code for new user
+    let newUserReferralCode = this.generateReferralCode();
+    let attempts = 0;
+    while (attempts < 10) {
+      try {
+        const existing = await sql`SELECT id FROM users WHERE "referralCode" = ${newUserReferralCode}`;
+        if ((existing as any[]).length === 0) break;
+        newUserReferralCode = this.generateReferralCode();
+        attempts++;
+      } catch (e) {
+        break; // Continue if table doesn't exist yet
+      }
+    }
+
+    const referredById = referralCode ? await this.getUserByReferralCode(referralCode) : null;
+    
     await sql`
-      INSERT INTO users (id, email, username, "firstName", "lastName", password, "securityPhrase", balance, "trustScore", "createdAt")
+      INSERT INTO users (id, email, username, "firstName", "lastName", password, "securityPhrase", balance, "trustScore", "referralCode", "referredBy", "createdAt")
       VALUES (${user.id}, ${user.email}, ${user.username}, ${user.firstName}, ${user.lastName},
-              ${user.password}, ${user.securityPhrase}, ${user.balance ?? 0}, ${user.trustScore ?? 50}, ${user.createdAt})
+              ${user.password}, ${user.securityPhrase}, ${user.balance ?? 0}, ${user.trustScore ?? 50}, ${newUserReferralCode}, ${referredById?.id || null}, ${user.createdAt})
     `;
+
+    // Track referral relationship
+    if (referredById) {
+      const referralId = `ref_${user.id}_${referredById.id}`;
+      await sql`
+        INSERT INTO referrals (id, "referrerId", "refereeId", "createdAt")
+        VALUES (${referralId}, ${referredById.id}, ${user.id}, NOW())
+        ON CONFLICT ("referrerId", "refereeId") DO NOTHING
+      `;
+    }
   }
 
   async getUser(id: string): Promise<User | null> {
@@ -229,6 +289,111 @@ export class PostgresDatabase {
   async getAllUsers(): Promise<User[]> {
     await initializeTables();
     return (await sql`SELECT * FROM users ORDER BY "createdAt" DESC`) as User[];
+  }
+
+  // ===== REFERRAL METHODS =====
+  async getUserByReferralCode(referralCode: string): Promise<User | null> {
+    await initializeTables();
+    const result = await sql`SELECT * FROM users WHERE "referralCode" = ${referralCode}`;
+    return (result as any[])[0] || null;
+  }
+
+  async getReferralInfo(userId: string): Promise<any> {
+    await initializeTables();
+    
+    // Get all referrals made by this user
+    const referrals = await sql`
+      SELECT 
+        r.id,
+        r."refereeId",
+        u.username,
+        u."firstName",
+        u."lastName",
+        u.email,
+        r."qualifiedAt",
+        r."rewardGiven",
+        r."rewardGivenAt",
+        r."createdAt",
+        tx.amount as "totalDeposits"
+      FROM referrals r
+      JOIN users u ON r."refereeId" = u.id
+      LEFT JOIN (
+        SELECT "buyerId", SUM(amount) as amount 
+        FROM transactions 
+        WHERE status = 'completed' 
+        GROUP BY "buyerId"
+      ) tx ON tx."buyerId" = r."refereeId"
+      WHERE r."referrerId" = ${userId}
+      ORDER BY r."createdAt" DESC
+    `;
+
+    // Get user's own referral info (who referred them)
+    const referrer = await sql`
+      SELECT u.id, u.username, u."firstName", u."lastName" 
+      FROM users u 
+      WHERE u.id = (SELECT "referredBy" FROM users WHERE id = ${userId})
+    `;
+
+    return {
+      referrals: (referrals as any[]).map(r => ({
+        ...r,
+        totalDeposits: r.totalDeposits ? parseFloat(r.totalDeposits) : 0,
+        isQualified: r.totalDeposits && parseFloat(r.totalDeposits) >= 10,
+        rewardEligible: r.totalDeposits && parseFloat(r.totalDeposits) >= 10 && !r.rewardGiven,
+      })),
+      referrer: (referrer as any[])[0] || null,
+    };
+  }
+
+  async markReferralQualified(referrerId: string, refereeId: string): Promise<void> {
+    await initializeTables();
+    await sql`
+      UPDATE referrals 
+      SET "qualifiedAt" = NOW()
+      WHERE "referrerId" = ${referrerId} AND "refereeId" = ${refereeId} AND "qualifiedAt" IS NULL
+    `;
+  }
+
+  async markReferralRewarded(referrerId: string, refereeId: string): Promise<void> {
+    await initializeTables();
+    await sql`
+      UPDATE referrals 
+      SET "rewardGiven" = TRUE, "rewardGivenAt" = NOW()
+      WHERE "referrerId" = ${referrerId} AND "refereeId" = ${refereeId}
+    `;
+  }
+
+  async checkAndRewardReferrals(userId: string, depositAmount: number): Promise<void> {
+    if (depositAmount < 10) return; // Only reward if $10+
+
+    await initializeTables();
+
+    // Find who referred this user
+    const user = await sql`SELECT "referredBy" FROM users WHERE id = ${userId}`;
+    const referred_by = (user as any[])[0]?.referredBy;
+
+    if (referred_by) {
+      // Mark referral as qualified
+      await this.markReferralQualified(referred_by, userId);
+
+      // Check if reward hasn't been given yet
+      const referralRecord = await sql`
+        SELECT * FROM referrals 
+        WHERE "referrerId" = ${referred_by} AND "refereeId" = ${userId}
+      `;
+
+      const record = (referralRecord as any[])[0];
+      if (record && !record.rewardGiven) {
+        // Add $2 to referrer's balance
+        const referrerUser = await this.getUser(referred_by);
+        if (referrerUser) {
+          const newBalance = (referrerUser.balance || 0) + 2;
+          await sql`UPDATE users SET balance = ${newBalance} WHERE id = ${referred_by}`;
+          await this.markReferralRewarded(referred_by, userId);
+          console.log(`[REFERRAL] ✓ Rewarded $2 to ${referred_by} for referral of ${userId}`);
+        }
+      }
+    }
   }
 
   async updateUser(id: string, user: Partial<User>): Promise<void> {

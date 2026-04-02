@@ -79,6 +79,14 @@ export async function POST(req: NextRequest) {
       trustScore: Math.min((buyer.trustScore || 0) + 5, 100),
     });
 
+    // Check and reward referrals if deposit is $10+
+    try {
+      await db.checkAndRewardReferrals(transaction.buyerId, transaction.amount);
+    } catch (referralError: any) {
+      console.error('[PAYMENT-CONFIRM] Referral reward error:', referralError);
+      // Don't fail the transaction for referral errors
+    }
+
     // Update transaction status to deposit_confirmed
     await db.updateTransaction(transactionId, {
       status: 'deposit_confirmed',

@@ -67,6 +67,8 @@ export default function DashboardPage() {
   const [ordersFilterStatus, setOrdersFilterStatus] = useState<'all' | 'pending' | 'active' | 'completed'>('all');
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [referralInfo, setReferralInfo] = useState<any>(null);
+  const [referralLoading, setReferralLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -255,6 +257,37 @@ export default function DashboardPage() {
     
     setFilteredProducts(filtered);
   }, [search, region, type, products]);
+
+  const fetchReferralInfo = async () => {
+    try {
+      setReferralLoading(true);
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      
+      const response = await fetch('/api/user/referrals', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-user-id': userId || '',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setReferralInfo(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch referral info:', error);
+    } finally {
+      setReferralLoading(false);
+    }
+  };
+
+  // Fetch referral info when profile tab is active
+  useEffect(() => {
+    if (activeTab === 'profile' && !referralInfo) {
+      fetchReferralInfo();
+    }
+  }, [activeTab]);
 
   const handleProfileSave = async () => {
     try {
@@ -954,21 +987,22 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'profile' && (
-          <div className="bg-dark-200/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-purple-800/30">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-100">Profile</h2>
-              {!profileEditing && (
-                <button
-                  onClick={() => setProfileEditing(true)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                >
-                  Edit Profile
-                </button>
-              )}
-            </div>
+          <>
+            <div className="bg-dark-200/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-purple-800/30">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-100">Profile</h2>
+                {!profileEditing && (
+                  <button
+                    onClick={() => setProfileEditing(true)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Edit Profile
+                  </button>
+                )}
+              </div>
 
-            {profileEditing ? (
-              <div className="space-y-4">
+              {profileEditing ? (
+                <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -1065,6 +1099,96 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+
+            {/* Referral Section */}
+            <div className="bg-gradient-to-br from-purple-900/40 to-pink-900/40 rounded-xl shadow-lg p-8 border border-purple-600/40 mt-8">
+            <h3 className="text-2xl font-bold text-gray-100 mb-6">💰 Referral Program</h3>
+            
+            {referralLoading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">Loading referral information...</p>
+              </div>
+            ) : referralInfo ? (
+              <div className="space-y-8">
+                {/* Your Referral Code */}
+                <div className="bg-dark-200/50 rounded-lg p-6 border border-purple-600/30">
+                  <label className="block text-sm font-medium text-gray-400 mb-3">Your Referral Code</label>
+                  <div className="flex items-center gap-3">
+                    <code className="flex-1 bg-dark-100 px-4 py-3 rounded-lg border border-purple-600/50 text-gray-100 font-mono text-lg tracking-widest">
+                      {referralInfo.referralCode}
+                    </code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(referralInfo.referralCode);
+                        alert('Referral code copied!');
+                      }}
+                      className="px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-all font-medium"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <p className="text-gray-400 text-sm mt-3">Share this code with friends to earn $2 when they deposit $10+</p>
+                </div>
+
+                {/* Referral Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-dark-200/50 rounded-lg p-4 border border-purple-600/30">
+                    <p className="text-gray-400 text-sm mb-1">Total Referred</p>
+                    <p className="text-2xl font-bold text-purple-400">{referralInfo.totalReferred || 0}</p>
+                  </div>
+                  <div className="bg-dark-200/50 rounded-lg p-4 border border-purple-600/30">
+                    <p className="text-gray-400 text-sm mb-1">Qualified ($10+)</p>
+                    <p className="text-2xl font-bold text-pink-400">{referralInfo.totalQualified || 0}</p>
+                  </div>
+                  <div className="bg-dark-200/50 rounded-lg p-4 border border-purple-600/30">
+                    <p className="text-gray-400 text-sm mb-1">Earned</p>
+                    <p className="text-2xl font-bold text-green-400">${(referralInfo.totalRewardsEarned || 0).toFixed(2)}</p>
+                  </div>
+                  <div className="bg-dark-200/50 rounded-lg p-4 border border-purple-600/30">
+                    <p className="text-gray-400 text-sm mb-1">Pending</p>
+                    <p className="text-2xl font-bold text-yellow-400">${(referralInfo.totalRewardsPending || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {/* Referred Users List */}
+                {referralInfo.referrals && referralInfo.referrals.length > 0 ? (
+                  <div className="bg-dark-200/50 rounded-lg p-6 border border-purple-600/30">
+                    <h4 className="text-lg font-semibold text-gray-100 mb-4">People You've Referred</h4>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {referralInfo.referrals.map((referral: any) => (
+                        <div key={referral.refereeId} className="flex items-center justify-between bg-dark-100 p-4 rounded-lg border border-gray-700/30">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-100">{referral.firstName} {referral.lastName}</p>
+                            <p className="text-sm text-gray-400">@{referral.username}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                              referral.rewardGiven
+                                ? 'bg-green-900/40 text-green-300 border border-green-600/40'
+                                : referral.qualifiedAt
+                                ? 'bg-yellow-900/40 text-yellow-300 border border-yellow-600/40'
+                                : 'bg-gray-800/40 text-gray-300 border border-gray-600/40'
+                            }`}>
+                              {referral.rewardGiven ? '✓ Rewarded' : referral.qualifiedAt ? '⏳ Qualified' : '⟳ Pending'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-dark-200/50 rounded-lg p-6 border border-purple-600/30 text-center">
+                    <p className="text-gray-400">No referrals yet. Share your code to get started!</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-400">Unable to load referral information</p>
+              </div>
+            )}
+          </div>
+          </>
         )}
 
         {activeTab === 'inbox' && (

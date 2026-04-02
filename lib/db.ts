@@ -168,7 +168,7 @@ class Database {
     return this.getUsers().find(u => u.id === id);
   }
 
-  createUser(user: User): void {
+  createUser(user: User, referralCode?: string): void {
     const users = this.getUsers();
     // Initialize balance and trustScore for new users
     const newUser: User = {
@@ -403,6 +403,48 @@ class Database {
     const current = this.getWalletConfig();
     this.writeFile(this.walletsFile, { ...current, ...config });
   }
+
+  // Referral methods - stubs for JSON database (referrals are PostgreSQL-only for production)
+  generateReferralCode(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  getUserByReferralCode(code: string): any | null {
+    // JSON database doesn't support referrals
+    return null;
+  }
+
+  getReferralInfo(userId: string): any {
+    // JSON database doesn't support referrals - return empty structure
+    return {
+      referralCode: '',
+      referrals: [],
+      referrer: null,
+      totalReferred: 0,
+      totalQualified: 0,
+      totalRewardsEarned: 0,
+      totalRewardsPending: 0,
+      pendingRewards: 0,
+    };
+  }
+
+  checkAndRewardReferrals(userId: string, amount: number): any {
+    // JSON database doesn't support referrals
+    return { rewarded: false };
+  }
+
+  markReferralQualified(referralId: string): void {
+    // JSON database doesn't support referrals
+  }
+
+  markReferralRewarded(referralId: string): void {
+    // JSON database doesn't support referrals
+  }
 }
 
 // Lazy load PostgreSQL adapter
@@ -427,11 +469,11 @@ class DatabaseWrapper {
   }
 
   // User methods
-  async createUser(user: User): Promise<void> {
+  async createUser(user: User, referralCode?: string): Promise<void> {
     if (this.isAsync) {
-      return await this.backend.createUser(user);
+      return await this.backend.createUser(user, referralCode);
     } else {
-      this.backend.createUser(user);
+      this.backend.createUser(user, referralCode);
     }
   }
 
@@ -755,6 +797,55 @@ class DatabaseWrapper {
       return await this.backend.getSizes();
     } else {
       return this.backend.getSizes();
+    }
+  }
+
+  // Referral methods
+  async generateReferralCode(): Promise<string> {
+    if (this.isAsync) {
+      return await this.backend.generateReferralCode();
+    } else {
+      return this.backend.generateReferralCode();
+    }
+  }
+
+  async getUserByReferralCode(code: string): Promise<any | null> {
+    if (this.isAsync) {
+      return await this.backend.getUserByReferralCode(code);
+    } else {
+      return this.backend.getUserByReferralCode(code);
+    }
+  }
+
+  async getReferralInfo(userId: string): Promise<any> {
+    if (this.isAsync) {
+      return await this.backend.getReferralInfo(userId);
+    } else {
+      return this.backend.getReferralInfo(userId);
+    }
+  }
+
+  async checkAndRewardReferrals(userId: string, amount: number): Promise<any> {
+    if (this.isAsync) {
+      return await this.backend.checkAndRewardReferrals(userId, amount);
+    } else {
+      return this.backend.checkAndRewardReferrals(userId, amount);
+    }
+  }
+
+  async markReferralQualified(referralId: string): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.markReferralQualified(referralId);
+    } else {
+      this.backend.markReferralQualified(referralId);
+    }
+  }
+
+  async markReferralRewarded(referralId: string): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.markReferralRewarded(referralId);
+    } else {
+      this.backend.markReferralRewarded(referralId);
     }
   }
 }

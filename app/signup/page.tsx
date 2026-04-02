@@ -12,6 +12,7 @@ export default function SignupPage() {
     email: '',
     password: '',
     securityPhrase: '',
+    referralCode: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
@@ -55,6 +56,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           ...formData,
           securityPhrase,
+          referralCode: formData.referralCode.trim().toUpperCase() || undefined,
         }),
       });
 
@@ -259,6 +261,29 @@ export default function SignupPage() {
               <p className="mt-2 text-xs text-gray-400">
                 Remember these words! You'll need them to log in.
               </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Referral Code (Optional)
+              </label>
+              <input
+                type="text"
+                value={formData.referralCode}
+                onChange={(e) => setFormData({ ...formData, referralCode: e.target.value.toUpperCase().slice(0, 6) })}
+                placeholder="Enter 6-letter code"
+                maxLength={6}
+                className="w-full px-3 py-2 bg-dark-100 border border-gray-600 text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent uppercase"
+              />
+              <p className="mt-2 text-xs text-gray-400">
+                💰 Have a referral code? Enter it to earn rewards when you make your first deposit!
+              </p>
+              <div className="mt-3 p-3 bg-purple-900/30 border border-purple-700/50 rounded-lg text-xs text-gray-300 space-y-1">
+                <p className="font-semibold text-purple-300">✨ Referral Program Details:</p>
+                <p>• Your referrer earns <span className="font-bold text-green-400">$2</span> when you deposit <span className="font-bold">$10+</span></p>
+                <p>• No cost to you - it's a bonus for your referrer</p>
+                <p>• Reward given automatically after your deposit confirms</p>
+              </div>
             </div>
           </div>
 

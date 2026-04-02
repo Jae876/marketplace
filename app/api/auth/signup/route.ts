@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { firstName, lastName, username, email, password, securityPhrase } = body;
+    const { firstName, lastName, username, email, password, securityPhrase, referralCode } = body;
 
     // Validate all required fields
     if (!firstName || !lastName || !username || !email || !password || !securityPhrase) {
@@ -37,6 +37,24 @@ export async function POST(req: NextRequest) {
         { error: 'Missing required fields. Please fill all fields.' },
         { status: 400 }
       );
+    }
+
+    // Validate referral code if provided
+    if (referralCode) {
+      if (typeof referralCode !== 'string' || referralCode.trim().length !== 6) {
+        return NextResponse.json(
+          { error: 'Invalid referral code format' },
+          { status: 400 }
+        );
+      }
+      // Check if referral code exists
+      const referrer = await db.getUserByReferralCode(referralCode.trim().toUpperCase());
+      if (!referrer) {
+        return NextResponse.json(
+          { error: 'Referral code not found' },
+          { status: 400 }
+        );
+      }
     }
 
     // Validate email format
@@ -120,7 +138,7 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         securityPhrase: hashedPhrase,
         createdAt: new Date().toISOString(),
-      });
+      }, referralCode?.trim().toUpperCase());
       console.log('[SIGNUP] User created successfully:', userId);
     } catch (dbError: any) {
       console.error('[SIGNUP] Database create error:', dbError);
