@@ -223,7 +223,10 @@ export default function BalanceBadge({ balance, trustScore = 0, recentDeposits =
             </div>
 
             {/* Modal Content - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-8 space-y-8">
+            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              {/* Spacing to bring content down */}
+              <div className="h-4" />
+              
               {/* Main Balance Display */}
               <div className="relative">
                 <div className="text-slate-500 text-sm uppercase tracking-widest mb-3">Current Balance</div>
