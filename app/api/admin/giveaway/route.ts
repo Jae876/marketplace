@@ -58,6 +58,12 @@ async function startGiveaway() {
       });
     }
 
+    // Generate giveaway ID
+    const giveawayId = `giveaway_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Store giveaway state in database
+    await db.startGiveaway(giveawayId, GIVEAWAY_DISCOUNT, GIVEAWAY_DURATION_HOURS);
+
     // Prepare professional giveaway notification
     const giveawayMessage = generateGiveawayMessage();
 
@@ -92,24 +98,18 @@ async function startGiveaway() {
       }
     }
 
-    // Store giveaway state (will be used for discount application)
-    const giveawayState = {
-      id: `giveaway_${Date.now()}`,
-      active: true,
-      startTime: new Date().toISOString(),
-      endTime: new Date(Date.now() + GIVEAWAY_DURATION_HOURS * 60 * 60 * 1000).toISOString(),
+    console.log('[GIVEAWAY] Giveaway started successfully', {
+      giveawayId,
       discount: GIVEAWAY_DISCOUNT,
-      eligibleUsers: eligibleUsers.map((u: any) => u.id),
+      duration: GIVEAWAY_DURATION_HOURS,
       notifiedUsers: notificationCount,
-    };
-
-    console.log('[GIVEAWAY] Giveaway started successfully', giveawayState);
+    });
 
     return NextResponse.json({
       success: true,
-      message: `Giveaway started! Notified ${notificationCount} eligible users.`,
+      message: `✓ Giveaway LIVE! Notified ${notificationCount} eligible users. $${GIVEAWAY_DISCOUNT} discount active for ${GIVEAWAY_DURATION_HOURS} hours.`,
       count: notificationCount,
-      giveawayId: giveawayState.id,
+      giveawayId: giveawayId,
       discount: GIVEAWAY_DISCOUNT,
       duration: GIVEAWAY_DURATION_HOURS,
       errors: errors.length > 0 ? errors : undefined,

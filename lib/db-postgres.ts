@@ -172,6 +172,19 @@ async function initializeTables() {
     `;
     console.log('[NEON] ✓ wallet_config table created/exists');
 
+    // Create giveaway_state table
+    await sql`
+      CREATE TABLE IF NOT EXISTS giveaway_state (
+        id VARCHAR(255) PRIMARY KEY,
+        active BOOLEAN DEFAULT FALSE,
+        "startTime" TIMESTAMP,
+        "endTime" TIMESTAMP,
+        discount DECIMAL(18, 8),
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    console.log('[NEON] ✓ giveaway_state table created/exists');
+
     // Ensure 'system' admin user exists for transactions and messages
     try {
       const systemUserExists = await sql`SELECT id FROM users WHERE id = 'system' LIMIT 1`;
@@ -714,6 +727,63 @@ export class PostgresDatabase {
     await initializeTables();
     const result = await sql`SELECT * FROM wallets`;
     return normalizeWallets(result as any[]);
+  }
+
+  // Giveaway Methods
+  async startGiveaway(giveawayId: string, discount: number, durationHours: number): Promise<void> {
+    await initializeTables();
+    const startTime = new Date();
+    const endTime = new Date(startTime.getTime() + durationHours * 60 * 60 * 1000);
+
+    try {
+      // Deactivate any previous giveaways
+      await sql`UPDATE giveaway_state SET active = FALSE WHERE active = TRUE`;
+
+      // Insert new giveaway
+      await sql`
+        INSERT INTO giveaway_state (id, active, "startTime", "endTime", discount, "createdAt")
+        VALUES (${giveawayId}, true, ${startTime.toISOString()}, ${endTime.toISOString()}, ${discount}, NOW())
+      `;
+      console.log('[DB] Giveaway started:', giveawayId);
+    } catch (error) {
+      console.error('[DB] Error starting giveaway:', error);
+      throw error;
+    }
+  }
+
+  async getActiveGiveaway(): Promise<any | null> {
+    await initializeTables();
+    try {
+      const result = await sql`
+        SELECT * FROM giveaway_state 
+        WHERE active = TRUE AND "endTime" > NOW()
+        ORDER BY "createdAt" DESC
+        LIMIT 1
+      `;
+      const giveaway = (result as any[])[0];
+      
+      if (giveaway && new Date(giveaway.endTime) < new Date()) {
+        // Giveaway has expired, deactivate it
+        await sql`UPDATE giveaway_state SET active = FALSE WHERE id = ${giveaway.id}`;
+        return null;
+      }
+
+      return giveaway || null;
+    } catch (error) {
+      console.error('[DB] Error getting active giveaway:', error);
+      return null;
+    }
+  }
+
+  async endGiveaway(giveawayId: string): Promise<void> {
+    await initializeTables();
+    try {
+      await sql`UPDATE giveaway_state SET active = FALSE WHERE id = ${giveawayId}`;
+      console.log('[DB] Giveaway ended:', giveawayId);
+    } catch (error) {
+      console.error('[DB] Error ending giveaway:', error);
+      throw error;
+    }
   }
 
   // Compatibility methods
