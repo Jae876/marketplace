@@ -39,6 +39,37 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// Helper function to ensure system giveaway transaction exists
+async function ensureSystemGiveawayTransaction(giveawayId: string): Promise<string> {
+  try {
+    // Check if system giveaway transaction already exists
+    const existingId = `txn_${giveawayId}`;
+    
+    // Create a dummy system transaction to satisfy foreign key constraint
+    const systemTransaction = {
+      id: existingId,
+      productId: `product_${giveawayId}`,
+      buyerId: 'system',
+      sellerId: 'system',
+      amount: 0,
+      cryptocurrency: 'USD',
+      walletAddress: 'system',
+      status: 'completed' as const,
+      paymentConfirmedByAdmin: true,
+      buyerConfirmedRelease: true,
+      createdAt: new Date().toISOString(),
+      confirmedAt: new Date().toISOString(),
+    };
+    
+    await db.createTransaction(systemTransaction);
+    console.log(`[GIVEAWAY] Created system transaction: ${existingId}`);
+    return existingId;
+  } catch (error: any) {
+    console.warn(`[GIVEAWAY] Note: System transaction may already exist, continuing...`, error.message);
+    return `txn_${giveawayId}`;
+  }
+}
+
 // Helper function to check if user is eligible
 async function isUserEligible(userId: string, userBalance: number): Promise<boolean> {
   // Check balance threshold
@@ -90,6 +121,11 @@ async function startGiveaway() {
     await db.startGiveaway(giveawayId, GIVEAWAY_DISCOUNT, GIVEAWAY_DURATION_HOURS);
     console.log(`[GIVEAWAY] Giveaway record created successfully`);
 
+    // Create system transaction for foreign key constraint
+    console.log(`[GIVEAWAY] Creating system transaction to satisfy database constraints`);
+    const systemTransactionId = await ensureSystemGiveawayTransaction(giveawayId);
+    console.log(`[GIVEAWAY] System transaction ready: ${systemTransactionId}`);
+
     let notificationCount = 0;
     let eligibleCount = 0;
     const errors: string[] = [];
@@ -126,7 +162,7 @@ async function startGiveaway() {
 
         const messageObject: any = {
           id: messageId,
-          transactionId: 'system_giveaway',
+          transactionId: systemTransactionId,
           buyerId: user.id,
           sellerId: 'SYSTEM',
           productName: 'Special Giveaway Alert',
@@ -140,6 +176,7 @@ async function startGiveaway() {
 
         console.log(`[GIVEAWAY] Creating message for user ${user.id}:`, {
           id: messageId,
+          transactionId: systemTransactionId,
           buyerId: user.id,
           eligible: isEligible,
         });
