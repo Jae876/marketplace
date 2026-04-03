@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 const GIVEAWAY_DISCOUNT = 10;
 const GIVEAWAY_DURATION_HOURS = 24;
 const ELIGIBLE_BALANCE_THRESHOLD = 10;
+const ELIGIBLE_SPEND_THRESHOLD = 10;
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,6 +36,28 @@ export async function POST(req: NextRequest) {
       { error: error.message || 'Internal server error' },
       { status: 500 }
     );
+  }
+}
+
+// Helper function to check if user is eligible
+async function isUserEligible(userId: string, userBalance: number): Promise<boolean> {
+  // Check balance threshold
+  if (userBalance >= ELIGIBLE_BALANCE_THRESHOLD) {
+    return true;
+  }
+
+  // Check purchase history (total spent)
+  try {
+    const userTransactions = await db.getTransactionsByUser(userId);
+    const totalSpent = userTransactions
+      .filter((t: any) => t.status === 'completed' && t.buyerId === userId)
+      .reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0);
+    
+    console.log(`[GIVEAWAY] User ${userId} - Balance: $${userBalance}, Total Spent: $${totalSpent}`);
+    return totalSpent >= ELIGIBLE_SPEND_THRESHOLD;
+  } catch (error: any) {
+    console.error(`[GIVEAWAY] Error checking spend history for user ${userId}:`, error);
+    return false;
   }
 }
 
@@ -73,12 +96,14 @@ async function startGiveaway() {
 
         const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const userBalance = user.balance ?? 0;
-        const isEligible = userBalance >= ELIGIBLE_BALANCE_THRESHOLD;
+        
+        // Check eligibility: balance >= $10 OR total spent >= $10
+        const isEligible = await isUserEligible(user.id, userBalance);
         if (isEligible) eligibleCount++;
 
-        const userMessage = generateGiveawayMessage(isEligible);
+        const userMessage = generateGiveawayMessage(isEligible, userBalance);
 
-        console.log(`[GIVEAWAY] Creating message for user ${user.id}`);
+        console.log(`[GIVEAWAY] Creating message for user ${user.id} (eligible: ${isEligible})`);
 
         await db.createItemMessage({
           id: messageId,
@@ -107,7 +132,7 @@ async function startGiveaway() {
 
     return NextResponse.json({
       success: true,
-      message: `Giveaway LIVE! Messaging ${notificationCount}/${allUsers.length} users. ${eligibleCount} eligible for $${GIVEAWAY_DISCOUNT} discount.`,
+      message: `Giveaway LIVE! Messaging ALL ${notificationCount}/${allUsers.length} users. ${eligibleCount} eligible for $${GIVEAWAY_DISCOUNT} discount.`,
       count: notificationCount,
       total: allUsers.length,
       eligibleCount: eligibleCount,
@@ -171,7 +196,7 @@ async function getGiveawayStatus() {
   }
 }
 
-function generateGiveawayMessage(isEligible: boolean): string {
+function generateGiveawayMessage(isEligible: boolean, userBalance: number): string {
   const endTime = new Date(Date.now() + GIVEAWAY_DURATION_HOURS * 60 * 60 * 1000);
   const formattedTime = endTime.toLocaleString('en-US', {
     weekday: 'short',
@@ -183,39 +208,55 @@ function generateGiveawayMessage(isEligible: boolean): string {
   });
 
   if (isEligible) {
-    return `SPECIAL GIVEAWAY ALERT
+    return `SPECIAL GIVEAWAY ALERT - EXCLUSIVE ACCESS
 
-You are eligible for our exclusive 24-hour Flash Giveaway!
+Congratulations! You are eligible for our 24-hour Flash Giveaway!
 
 DISCOUNT: $10 OFF all marketplace products
 DURATION: 24 hours (ends ${formattedTime} EST)
 STATUS: YOU ARE ELIGIBLE
+CURRENT BALANCE: $${userBalance}
+
+Your eligibility qualifies you for an exclusive $10 discount on all products!
 
 How to claim:
 1. Visit Marketplace
 2. Browse products
-3. Add to cart - discount applied automatically
+3. Add to cart - $10 discount applied automatically
 4. Complete payment
+
+Terms:
+- Discount applies to all eligible products
+- One discount per account during promotion
+- Automatic price reduction at checkout
 
 Expires: ${formattedTime} EST`;
   } else {
     return `SPECIAL GIVEAWAY ALERT
 
-We're hosting a 24-hour Flash Giveaway!
+We're hosting a 24-hour Flash Giveaway - Join eligible members!
 
 DISCOUNT: $10 OFF all marketplace products
 DURATION: 24 hours (ends ${formattedTime} EST)
-REQUIREMENT: Minimum balance of $${ELIGIBLE_BALANCE_THRESHOLD}
+REQUIREMENT: Minimum balance of $${ELIGIBLE_BALANCE_THRESHOLD} OR $${ELIGIBLE_SPEND_THRESHOLD}+ in purchases
+YOUR CURRENT BALANCE: $${userBalance}
 
-How to qualify:
-Add funds to your account to reach $${ELIGIBLE_BALANCE_THRESHOLD} balance and get instant access to the $10 discount!
+To get instant access to the $10 discount, become eligible by:
+
+Option 1: Add Funds
+- Deposit to reach $${ELIGIBLE_BALANCE_THRESHOLD}+ balance
+- Instant access once threshold reached
+
+Option 2: Purchase History
+- Spend $${ELIGIBLE_SPEND_THRESHOLD}+ on marketplace products
+- Already qualified? Discount applies automatically
 
 Once qualified:
 1. Visit Marketplace
 2. Browse products
-3. Add to cart - discount applied automatically
+3. Add to cart - $10 discount applied automatically
 4. Complete payment
 
-Expires: ${formattedTime} EST`;
+Don't miss out! Offer expires: ${formattedTime} EST`;
   }
 }
