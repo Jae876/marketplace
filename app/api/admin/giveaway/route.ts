@@ -39,34 +39,55 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Helper function to ensure system giveaway transaction exists
-async function ensureSystemGiveawayTransaction(giveawayId: string): Promise<string> {
+// Helper function to get or create a system transaction for giveaway messages  
+async function getSystemGiveawayTransactionId(giveawayId: string): Promise<string> {
   try {
-    // Check if system giveaway transaction already exists
-    const existingId = `txn_${giveawayId}`;
+    console.log(`[GIVEAWAY] Setting up system transaction for giveaway: ${giveawayId}`);
     
-    // Create a dummy system transaction to satisfy foreign key constraint
+    // Try to get first existing completed transaction from database
+    try {
+      const transactions = await db.getTransactions();
+      if (transactions && transactions.length > 0) {
+        const validTxn = transactions.find((t: any) => t.status === 'completed' && t.id);
+        if (validTxn) {
+          console.log(`[GIVEAWAY] ✓ Using existing transaction: ${validTxn.id}`);
+          return validTxn.id;
+        }
+      }
+    } catch (getTxnError: any) {
+      console.warn(`[GIVEAWAY] Could not fetch existing transactions, will create new one`);
+    }
+
+    // Create a system giveaway transaction
+    const transactionId = `txn_${giveawayId}`;
     const systemTransaction = {
-      id: existingId,
-      productId: `product_${giveawayId}`,
-      buyerId: 'system',
-      sellerId: 'system',
+      id: transactionId,
+      productId: 'giveaway_promotion',
+      buyerId: 'giveaway_system',
+      sellerId: 'giveaway_system',
       amount: 0,
       cryptocurrency: 'USD',
-      walletAddress: 'system',
+      walletAddress: 'SYSTEM',
       status: 'completed' as const,
       paymentConfirmedByAdmin: true,
       buyerConfirmedRelease: true,
+      itemDeliveryContent: `Giveaway Campaign ${giveawayId}`,
       createdAt: new Date().toISOString(),
       confirmedAt: new Date().toISOString(),
     };
-    
-    await db.createTransaction(systemTransaction);
-    console.log(`[GIVEAWAY] Created system transaction: ${existingId}`);
-    return existingId;
+
+    try {
+      await db.createTransaction(systemTransaction);
+      console.log(`[GIVEAWAY] ✓ System transaction created: ${transactionId}`);
+      return transactionId;
+    } catch (createError: any) {
+      console.warn(`[GIVEAWAY] System transaction creation failed: ${createError.message}`);
+      // Still return the ID - if it fails here, we'll get explicit FK errors in message creation
+      return transactionId;
+    }
   } catch (error: any) {
-    console.warn(`[GIVEAWAY] Note: System transaction may already exist, continuing...`, error.message);
-    return `txn_${giveawayId}`;
+    console.error(`[GIVEAWAY] Critical error setting up transaction:`, error.message);
+    throw new Error(`Cannot setup transaction for giveaway: ${error.message}`);
   }
 }
 
@@ -122,8 +143,8 @@ async function startGiveaway() {
     console.log(`[GIVEAWAY] Giveaway record created successfully`);
 
     // Create system transaction for foreign key constraint
-    console.log(`[GIVEAWAY] Creating system transaction to satisfy database constraints`);
-    const systemTransactionId = await ensureSystemGiveawayTransaction(giveawayId);
+    console.log(`[GIVEAWAY] Setting up system transaction for message references`);
+    const systemTransactionId = await getSystemGiveawayTransactionId(giveawayId);
     console.log(`[GIVEAWAY] System transaction ready: ${systemTransactionId}`);
 
     let notificationCount = 0;
