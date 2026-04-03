@@ -163,6 +163,10 @@ async function startGiveaway() {
 
     console.log(`[GIVEAWAY] Giveaway complete. Notified: ${notificationCount}/${allUsers.length}, Eligible: ${eligibleCount}`);
 
+    if (errors.length > 0) {
+      console.error('[GIVEAWAY] Creation errors:', errors);
+    }
+
     return NextResponse.json({
       success: notificationCount > 0,
       message: `Giveaway LIVE! Messaged ${notificationCount}/${allUsers.length} users. ${eligibleCount} eligible for $${GIVEAWAY_DISCOUNT} discount.`,

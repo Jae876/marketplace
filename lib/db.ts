@@ -711,7 +711,18 @@ class DatabaseWrapper {
       if (this.isAsync) {
         return await this.backend.createItemMessage(message);
       } else {
+        // For sync backend (JSON database), call directly and verify persistence
         this.backend.createItemMessage(message);
+        
+        // Verify message was actually persisted to database
+        const verifyMessages = this.backend.getItemMessages();
+        const messageExists = verifyMessages.some((m: any) => m.id === message.id && m.buyerId === message.buyerId);
+        
+        if (!messageExists) {
+          throw new Error(`CRITICAL: Message persistence failed - ${message.id} not found in database after write for user ${message.buyerId}`);
+        }
+        
+        return;
       }
     } catch (error: any) {
       console.error('[DB] Error creating item message:', error);
