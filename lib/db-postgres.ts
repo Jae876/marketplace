@@ -327,67 +327,99 @@ export class PostgresDatabase {
   async getReferralInfo(userId: string): Promise<any> {
     await initializeTables();
     
-    // Get user's referral code
-    const userResult = await sql`SELECT "referralCode" FROM users WHERE id = ${userId}`;
-    const userReferralCode = (userResult as any[])[0]?.referralCode || '';
-    
-    // Get all referrals made by this user
-    const referrals = await sql`
-      SELECT 
-        r.id,
-        r."refereeId",
-        u.username,
-        u."firstName",
-        u."lastName",
-        u.email,
-        r."qualifiedAt",
-        r."rewardGiven",
-        r."rewardGivenAt",
-        r."createdAt",
-        tx.amount as "totalDeposits"
-      FROM referrals r
-      JOIN users u ON r."refereeId" = u.id
-      LEFT JOIN (
-        SELECT "buyerId", SUM(amount) as amount 
-        FROM transactions 
-        WHERE status = 'completed' 
-        GROUP BY "buyerId"
-      ) tx ON tx."buyerId" = r."refereeId"
-      WHERE r."referrerId" = ${userId}
-      ORDER BY r."createdAt" DESC
-    `;
+    try {
+      // Get user's referral code
+      const userResult = await sql`SELECT "referralCode" FROM users WHERE id = ${userId}`;
+      const userReferralCode = (userResult as any[])[0]?.referralCode || '';
+      
+      // Get all referrals made by this user
+      const referrals = await sql`
+        SELECT 
+          r.id,
+          r."refereeId",
+          u.username,
+          u."firstName",
+          u."lastName",
+          u.email,
+          r."qualifiedAt",
+          r."rewardGiven",
+          r."rewardGivenAt",
+          r."createdAt",
+          tx.amount as "totalDeposits"
+        FROM referrals r
+        JOIN users u ON r."refereeId" = u.id
+        LEFT JOIN (
+          SELECT "buyerId", SUM(amount) as amount 
+          FROM transactions 
+          WHERE status = 'completed' 
+          GROUP BY "buyerId"
+        ) tx ON tx."buyerId" = r."refereeId"
+        WHERE r."referrerId" = ${userId}
+        ORDER BY r."createdAt" DESC
+      `;
 
-    // Get user's own referral info (who referred them)
-    const referrer = await sql`
-      SELECT u.id, u.username, u."firstName", u."lastName" 
-      FROM users u 
-      WHERE u.id = (SELECT "referredBy" FROM users WHERE id = ${userId})
-    `;
+      // Get user's own referral info (who referred them)
+      const referrer = await sql`
+        SELECT u.id, u.username, u."firstName", u."lastName" 
+        FROM users u 
+        WHERE u.id = (SELECT "referredBy" FROM users WHERE id = ${userId})
+      `;
 
-    // Calculate stats from referrals
-    const referralArray = (referrals as any[]);
-    const mappedReferrals = referralArray.map(r => ({
-      ...r,
-      totalDeposits: r.totalDeposits ? parseFloat(r.totalDeposits) : 0,
-      isQualified: r.totalDeposits && parseFloat(r.totalDeposits) >= 10,
-      qualifiedAt: r.qualifiedAt ? new Date(r.qualifiedAt) : null,
-    }));
+      // Ensure referrals is an array
+      const referralArray = Array.isArray(referrals) ? referrals : [];
+      console.log('[NEON] getReferralInfo for userId:', userId, 'found referrals:', referralArray.length);
 
-    const totalReferred = referralArray.length;
-    const totalQualified = mappedReferrals.filter(r => r.isQualified || r.rewardGiven).length;
-    const totalRewardsEarned = mappedReferrals.filter(r => r.rewardGiven).length * 2; // $2 per referral
-    const totalRewardsPending = mappedReferrals.filter(r => r.isQualified && !r.rewardGiven).length * 2; // $2 per pending
+      // Map and validate referrals
+      const mappedReferrals = referralArray.map(r => ({
+        refereeId: r.refereeId,
+        username: r.username,
+        firstName: r.firstName,
+        lastName: r.lastName,
+        email: r.email,
+        qualifiedAt: r.qualifiedAt ? new Date(r.qualifiedAt) : null,
+        rewardGiven: r.rewardGiven || false,
+        createdAt: r.createdAt,
+        totalDeposits: r.totalDeposits ? parseFloat(r.totalDeposits.toString()) : 0,
+        isQualified: r.totalDeposits && parseFloat(r.totalDeposits.toString()) >= 10,
+      }));
 
-    return {
-      referralCode: userReferralCode,
-      referrals: mappedReferrals,
-      referrer: (referrer as any[])[0] || null,
-      totalReferred,
-      totalQualified,
-      totalRewardsEarned,
-      totalRewardsPending,
-      pendingRewards: totalRewardsPending,
-    };
+      // Calculate accurate stats
+      const totalReferred = referralArray.length;
+      const totalQualified = mappedReferrals.filter(r => r.isQualified || r.rewardGiven).length;
+      const totalRewardsEarned = mappedReferrals.filter(r => r.rewardGiven).length * 2;
+      const totalRewardsPending = mappedReferrals.filter(r => r.isQualified && !r.rewardGiven).length * 2;
+
+      const result = {
+        referralCode: userReferralCode,
+        referrals: mappedReferrals,
+        referrer: (referrer as any[])[0] || null,
+        totalReferred,
+        totalQualified,
+        totalRewardsEarned,
+        totalRewardsPending,
+        pendingRewards: totalRewardsPending,
+      };
+
+      console.log('[NEON] getReferralInfo result:', {
+        totalReferred: result.totalReferred,
+        totalQualified: result.totalQualified,
+        referralCount: result.referrals.length,
+      });
+
+      return result;
+    } catch (error) {
+      console.error('[NEON] getReferralInfo error:', error);
+      return {
+        referralCode: '',
+        referrals: [],
+        referrer: null,
+        totalReferred: 0,
+        totalQualified: 0,
+        totalRewardsEarned: 0,
+        totalRewardsPending: 0,
+        pendingRewards: 0,
+      };
+    }
   }
 
   async markReferralQualified(referrerId: string, refereeId: string): Promise<void> {
