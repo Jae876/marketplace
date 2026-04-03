@@ -239,7 +239,12 @@ export default function BalanceBadge({ balance, trustScore = 0, recentDeposits =
 
               {/* Add Funds Button - Easy Access Below Balance */}
               <button
-                onClick={() => setShowAddFundsModal(true)}
+                onClick={() => {
+                  setShowBalanceModal(false);
+                  onModalOpen?.(false);
+                  // Delay slightly to let balance modal close, then show Add Funds
+                  setTimeout(() => setShowAddFundsModal(true), 100);
+                }}
                 className="w-full py-3 rounded-lg font-medium text-sm bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg hover:shadow-green-500/20 transition-all border border-green-500/30 hover:border-green-400/50"
               >
                 + Add Funds

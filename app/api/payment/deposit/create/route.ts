@@ -70,12 +70,12 @@ export async function POST(req: NextRequest) {
     // Create deposit transaction (NOT linked to a product, for balance deposits only)
     const depositId = `dep_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Use special marker for direct deposits to distinguish from product purchases
+    // Direct deposit - productId is NULL (no product reference)
     const depositTxData: any = {
       id: depositId,
-      productId: 'direct_deposit', // Special marker - NOT a product transaction
+      productId: null,
       buyerId: decoded.userId,
-      sellerId: 'system_deposit', // Mark as system deposit
+      sellerId: 'system_deposit',
       amount: amount,
       cryptocurrency: cryptocurrency,
       walletAddress: walletAddress,

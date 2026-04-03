@@ -29,6 +29,13 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
   const [confirming, setConfirming] = useState(false);
   const [confirmationStatus, setConfirmationStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
 
+  // Auto-show crypto options when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setStep('crypto');
+    }
+  }, [isOpen]);
+
   // Reset states when modal is closed
   useEffect(() => {
     if (!isOpen) {

@@ -108,15 +108,22 @@ async function initializeTables() {
     `;
     console.log('[NEON] ✓ transactions table created/exists');
 
-    // Migration: Make productId nullable to support direct deposits
+    // Migration: Handle productId for direct deposits
     try {
+      // First, try to drop the foreign key constraint if it exists
+      await sql`ALTER TABLE transactions DROP CONSTRAINT IF EXISTS "transactions_productId_fkey"`;
+      console.log('[NEON] ✓ Migration: Removed productId foreign key constraint (allows deposits)');
+    } catch (fkError: any) {
+      console.log('[NEON] FK constraint migration note:', fkError.message);
+    }
+
+    try {
+      // Make productId nullable to support direct deposits
       await sql`ALTER TABLE transactions ALTER COLUMN "productId" DROP NOT NULL`;
       console.log('[NEON] ✓ Migration: productId is now nullable for deposits');
-    } catch (migrationError: any) {
-      // Column might already be nullable, that's ok
-      if (!migrationError.message?.includes('column does not have a NOT NULL constraint') && 
-          !migrationError.message?.includes('already')) {
-        console.warn('[NEON] Migration note:', migrationError.message);
+    } catch (nullError: any) {
+      if (!nullError.message?.includes('already')) {
+        console.log('[NEON] Nullable migration note:', nullError.message);
       }
     }
 
