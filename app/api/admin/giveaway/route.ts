@@ -71,7 +71,8 @@ async function startGiveaway() {
     for (const user of allUsers) {
       try {
         const messageId = `giveaway_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const isEligible = parseFloat(user.balance) >= ELIGIBLE_BALANCE_THRESHOLD;
+        const userBalance = user.balance ?? 0;
+        const isEligible = userBalance >= ELIGIBLE_BALANCE_THRESHOLD;
         if (isEligible) eligibleCount++;
 
         // Generate message tailored to user's eligibility status
