@@ -5,16 +5,15 @@ import { verifyAdminSession } from '@/lib/auth';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const GIVEAWAY_DISCOUNT = 10; // $10 off all products
+const GIVEAWAY_DISCOUNT = 10;
 const GIVEAWAY_DURATION_HOURS = 24;
-const ELIGIBLE_BALANCE_THRESHOLD = 10; // Min $10 balance to be eligible
+const ELIGIBLE_BALANCE_THRESHOLD = 10;
 
 export async function POST(req: NextRequest) {
   try {
-    // Verify admin session
     if (!verifyAdminSession(req)) {
       return NextResponse.json(
-        { error: 'Unauthorized - invalid or missing admin session' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
@@ -23,13 +22,12 @@ export async function POST(req: NextRequest) {
 
     if (action === 'start') {
       return await startGiveaway();
+    } else if (action === 'cancel') {
+      return await cancelGiveaway();
     } else if (action === 'status') {
       return await getGiveawayStatus();
     } else {
-      return NextResponse.json(
-        { error: 'Invalid action' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
   } catch (error: any) {
     console.error('[GIVEAWAY] Error:', error);
@@ -42,14 +40,12 @@ export async function POST(req: NextRequest) {
 
 async function startGiveaway() {
   try {
-    console.log('[GIVEAWAY] Starting giveaway broadcast...');
+    console.log('[GIVEAWAY] Starting giveaway...');
 
-    // Get all users (both eligible and ineligible for notification)
     const allUsers = await db.getAllUsers();
+    console.log(`[GIVEAWAY] Retrieved ${allUsers.length} users from database`);
 
-    console.log(`[GIVEAWAY] Notifying ${allUsers.length} total users`);
-
-    if (allUsers.length === 0) {
+    if (!allUsers || allUsers.length === 0) {
       return NextResponse.json({
         success: false,
         message: 'No users found in system',
@@ -57,34 +53,39 @@ async function startGiveaway() {
       });
     }
 
-    // Generate giveaway ID
     const giveawayId = `giveaway_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // Store giveaway state in database
+    
+    console.log(`[GIVEAWAY] Creating giveaway record: ${giveawayId}`);
     await db.startGiveaway(giveawayId, GIVEAWAY_DISCOUNT, GIVEAWAY_DURATION_HOURS);
 
-    // Send notification to each user's inbox (regardless of eligibility)
     let notificationCount = 0;
     let eligibleCount = 0;
     const errors: string[] = [];
 
+    console.log(`[GIVEAWAY] Starting notification loop for ${allUsers.length} users`);
+
     for (const user of allUsers) {
       try {
-        const messageId = `giveaway_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        if (!user.id) {
+          console.warn('[GIVEAWAY] Skipping user with no ID');
+          continue;
+        }
+
+        const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const userBalance = user.balance ?? 0;
         const isEligible = userBalance >= ELIGIBLE_BALANCE_THRESHOLD;
         if (isEligible) eligibleCount++;
 
-        // Generate message tailored to user's eligibility status
         const userMessage = generateGiveawayMessage(isEligible);
 
-        // Create message in user's inbox
+        console.log(`[GIVEAWAY] Creating message for user ${user.id}`);
+
         await db.createItemMessage({
           id: messageId,
           transactionId: 'system_giveaway',
           buyerId: user.id,
-          sellerId: 'admin',
-          productName: '🎁 Special Giveaway - 24 Hour Flash Sale',
+          sellerId: 'SYSTEM',
+          productName: 'Special Giveaway Alert',
           itemContent: userMessage,
           amount: isEligible ? GIVEAWAY_DISCOUNT : 0,
           cryptocurrency: 'USD',
@@ -94,25 +95,21 @@ async function startGiveaway() {
         });
 
         notificationCount++;
-        console.log(`[GIVEAWAY] Notification sent to user ${user.id} (eligible: ${isEligible})`);
+        console.log(`[GIVEAWAY] Message sent to user ${user.id}`);
       } catch (userError: any) {
-        errors.push(`User ${user.id}: ${userError.message}`);
-        console.error(`[GIVEAWAY] Failed to notify user ${user.id}:`, userError);
+        const errorMsg = `User ${user.id}: ${userError.message}`;
+        errors.push(errorMsg);
+        console.error(`[GIVEAWAY] ${errorMsg}`);
       }
     }
 
-    console.log('[GIVEAWAY] Giveaway started successfully', {
-      giveawayId,
-      discount: GIVEAWAY_DISCOUNT,
-      duration: GIVEAWAY_DURATION_HOURS,
-      totalNotified: notificationCount,
-      eligibleCount: eligibleCount,
-    });
+    console.log(`[GIVEAWAY] Giveaway started. Notified: ${notificationCount}, Eligible: ${eligibleCount}`);
 
     return NextResponse.json({
       success: true,
-      message: `✓ Giveaway LIVE! Notified ${notificationCount} users. ${eligibleCount} are eligible. $${GIVEAWAY_DISCOUNT} discount active for ${GIVEAWAY_DURATION_HOURS} hours.`,
+      message: `Giveaway LIVE! Messaging ${notificationCount}/${allUsers.length} users. ${eligibleCount} eligible for $${GIVEAWAY_DISCOUNT} discount.`,
       count: notificationCount,
+      total: allUsers.length,
       eligibleCount: eligibleCount,
       giveawayId: giveawayId,
       discount: GIVEAWAY_DISCOUNT,
@@ -128,15 +125,47 @@ async function startGiveaway() {
   }
 }
 
+async function cancelGiveaway() {
+  try {
+    console.log('[GIVEAWAY] Canceling giveaway...');
+
+    const activeGiveaway = await db.getActiveGiveaway();
+    
+    if (!activeGiveaway) {
+      return NextResponse.json({
+        success: false,
+        message: 'No active giveaway to cancel',
+      });
+    }
+
+    await db.endGiveaway(activeGiveaway.id);
+
+    console.log('[GIVEAWAY] Giveaway canceled, prices reset to normal');
+
+    return NextResponse.json({
+      success: true,
+      message: 'Giveaway canceled! All product prices reset to normal.',
+      giveawayId: activeGiveaway.id,
+    });
+  } catch (error: any) {
+    console.error('[GIVEAWAY] Error canceling giveaway:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to cancel giveaway' },
+      { status: 500 }
+    );
+  }
+}
+
 async function getGiveawayStatus() {
   try {
+    const activeGiveaway = await db.getActiveGiveaway();
     return NextResponse.json({
-      active: false,
-      message: 'No active giveaway',
+      active: !!activeGiveaway,
+      giveaway: activeGiveaway || null,
     });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || 'Failed to get giveaway status' },
+      { error: error.message || 'Failed to get status' },
       { status: 500 }
     );
   }
@@ -154,63 +183,39 @@ function generateGiveawayMessage(isEligible: boolean): string {
   });
 
   if (isEligible) {
-    return `
-SPECIAL GIVEAWAY ALERT
+    return `SPECIAL GIVEAWAY ALERT
 
-Dear Valued Member,
+You are eligible for our exclusive 24-hour Flash Giveaway!
 
-We're thrilled to announce an exclusive 24-hour Flash Giveaway
-exclusively for our premium members!
+DISCOUNT: $10 OFF all marketplace products
+DURATION: 24 hours (ends ${formattedTime} EST)
+STATUS: YOU ARE ELIGIBLE
 
-GIVEAWAY DETAILS:
-
-✓ DISCOUNT:      $10 OFF all marketplace products
-✓ DURATION:      24 hours (ends ${formattedTime} EST)
-✓ ELIGIBILITY:   YOU ARE ELIGIBLE ✓
-✓ LIMITATION:    One discount per account
-
-HOW TO CLAIM:
-
-1. Visit the Marketplace
-2. Browse available products
-3. Add to cart - $10 discount applied automatically
+How to claim:
+1. Visit Marketplace
+2. Browse products
+3. Add to cart - discount applied automatically
 4. Complete payment
 
-Don't miss this limited-time opportunity!
-
-Best regards,
-Marketplace Admin`;
+Expires: ${formattedTime} EST`;
   } else {
-    return `
-SPECIAL GIVEAWAY ALERT
+    return `SPECIAL GIVEAWAY ALERT
 
-Dear Member,
+We're hosting a 24-hour Flash Giveaway!
 
-We're excited to announce a 24-hour Flash Giveaway for eligible
-users on our platform!
+DISCOUNT: $10 OFF all marketplace products
+DURATION: 24 hours (ends ${formattedTime} EST)
+REQUIREMENT: Minimum balance of $${ELIGIBLE_BALANCE_THRESHOLD}
 
-GIVEAWAY DETAILS:
+How to qualify:
+Add funds to your account to reach $${ELIGIBLE_BALANCE_THRESHOLD} balance and get instant access to the $10 discount!
 
-✓ DISCOUNT:      $10 OFF all marketplace products
-✓ DURATION:      24 hours (ends ${formattedTime} EST)
-✓ ELIGIBILITY:   Requires minimum balance of $${ELIGIBLE_BALANCE_THRESHOLD}
-✓ LIMITATION:    One discount per eligible account
-
-HOW TO BECOME ELIGIBLE:
-
-To qualify for this giveaway, you need a balance of at least
-$${ELIGIBLE_BALANCE_THRESHOLD}. Simply add funds to your account via
-our Add Funds feature, and you'll instantly become eligible!
-
-Once eligible:
-1. Visit the Marketplace
-2. Browse available products
-3. Add to cart - $10 discount applied automatically
+Once qualified:
+1. Visit Marketplace
+2. Browse products
+3. Add to cart - discount applied automatically
 4. Complete payment
 
-Don't miss this opportunity to save on your next purchase!
-
-Best regards,
-Marketplace Admin`;
+Expires: ${formattedTime} EST`;
   }
 }

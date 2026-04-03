@@ -208,10 +208,39 @@ export default function AdminPage() {
         return;
       }
 
-      setSuccess(`✓ Giveaway started! Notified ${data.count} eligible users with $10+ balance.`);
-      setGiveawayMessage(`Transaction ID: ${data.giveawayId}\n- Discount: $${data.discount}\n- Duration: ${data.duration} hours\n- Users Notified: ${data.count}`);
+      setSuccess(`Giveaway LIVE! Messaged ${data.count}/${data.total} users. ${data.eligibleCount} eligible for discount.`);
+      setGiveawayMessage(`ID: ${data.giveawayId}\nDiscount: $${data.discount}\nDuration: ${data.duration}h\nNotified: ${data.count}/${data.total}\nEligible: ${data.eligibleCount}`);
     } catch (error: any) {
       setError(error.message || 'Failed to start giveaway');
+    } finally {
+      setGiveawayLoading(false);
+    }
+  };
+
+  const handleCancelGiveaway = async () => {
+    try {
+      setGiveawayLoading(true);
+      setError('');
+      setSuccess('');
+
+      const response = await fetch('/api/admin/giveaway', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'cancel' }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to cancel giveaway');
+        return;
+      }
+
+      setSuccess(data.message || 'Giveaway canceled! Prices reset to normal.');
+      setGiveawayMessage('');
+    } catch (error: any) {
+      setError(error.message || 'Failed to cancel giveaway');
     } finally {
       setGiveawayLoading(false);
     }
@@ -1032,7 +1061,7 @@ export default function AdminPage() {
               <h2 className="text-3xl font-bold bg-gradient-to-r from-green-300 to-emerald-300 bg-clip-text text-transparent mb-2">
                 🎁 Launch Giveaway Campaign
               </h2>
-              <p className="text-gray-400">Start a $10 discount giveaway for 24 hours - Only users with $10+ balance are eligible</p>
+              <p className="text-gray-400">Start a $10 discount giveaway for 24 hours - Notify ALL users (eligible: $10+ discount, ineligible: invitation to qualify)</p>
             </div>
 
             {/* Giveaway Info */}
@@ -1061,15 +1090,19 @@ export default function AdminPage() {
                 </li>
                 <li className="flex items-start">
                   <span className="text-emerald-400 font-bold mr-3">2.</span>
-                  <span>All eligible users (balance ≥ $10) receive notification in their inbox</span>
+                  <span>ALL users receive notification in their inbox (eligible: $10+ balance, ineligible: how to qualify)</span>
                 </li>
                 <li className="flex items-start">
                   <span className="text-emerald-400 font-bold mr-3">3.</span>
-                  <span>Users see $10 automatically deducted from all product prices during giveaway period</span>
+                  <span>Eligible users see $10 automatically deducted from all product prices</span>
                 </li>
                 <li className="flex items-start">
                   <span className="text-emerald-400 font-bold mr-3">4.</span>
-                  <span>Discount expires after 24 hours - prices return to normal</span>
+                  <span>Click "Cancel & Reset Prices" anytime to immediately end promotion and restore normal prices</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-emerald-400 font-bold mr-3">5.</span>
+                  <span>If not cancelled manually, discount expires after 24 hours automatically</span>
                 </li>
               </ul>
             </div>
@@ -1077,7 +1110,7 @@ export default function AdminPage() {
             {/* Warning Box */}
             <div className="bg-amber-900/20 border border-amber-600/40 rounded-lg p-6 mb-8">
               <p className="text-amber-300 text-sm font-semibold">⚠️ Important:</p>
-              <p className="text-amber-200 text-sm mt-2">This action will broadcast a promotional message to all eligible users. The discount will apply automatically to all products for exactly 24 hours. This action cannot be undone until the 24-hour period expires.</p>
+              <p className="text-amber-200 text-sm mt-2">This action will broadcast promotional messages to ALL users. The $10 discount will apply automatically to all products for exactly 24 hours. You can cancel anytime to immediately reset prices to normal.</p>
             </div>
 
             {error && (
@@ -1098,18 +1131,32 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* Launch Button */}
-            <button
-              onClick={handleStartGiveaway}
-              disabled={giveawayLoading}
-              className={`w-full py-4 rounded-lg font-bold text-white transition-all text-lg ${
-                giveawayLoading
-                  ? 'bg-gray-600 cursor-not-allowed opacity-60'
-                  : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 hover:shadow-lg hover:shadow-green-500/30'
-              }`}
-            >
-              {giveawayLoading ? '⏳ Starting Giveaway...' : '🎁 Launch 24-Hour Giveaway'}
-            </button>
+            {/* Buttons */}
+            <div className="flex gap-4">
+              <button
+                onClick={handleStartGiveaway}
+                disabled={giveawayLoading}
+                className={`flex-1 py-4 rounded-lg font-bold text-white transition-all text-lg ${
+                  giveawayLoading
+                    ? 'bg-gray-600 cursor-not-allowed opacity-60'
+                    : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 hover:shadow-lg hover:shadow-green-500/30'
+                }`}
+              >
+                {giveawayLoading ? '⏳ Processing...' : '🎁 Launch 24-Hour Giveaway'}
+              </button>
+
+              <button
+                onClick={handleCancelGiveaway}
+                disabled={giveawayLoading}
+                className={`flex-1 py-4 rounded-lg font-bold text-white transition-all text-lg ${
+                  giveawayLoading
+                    ? 'bg-gray-600 cursor-not-allowed opacity-60'
+                    : 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 hover:shadow-lg hover:shadow-red-500/30'
+                }`}
+              >
+                {giveawayLoading ? '⏳ Processing...' : '✕ Cancel & Reset Prices'}
+              </button>
+            </div>
           </div>
         )}
       </main>
