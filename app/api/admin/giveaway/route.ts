@@ -39,63 +39,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Helper function to get or create a system transaction for giveaway messages  
-async function getSystemGiveawayTransactionId(giveawayId: string, firstUserId?: string): Promise<string> {
-  try {
-    console.log(`[GIVEAWAY] Setting up system transaction for giveaway: ${giveawayId}`);
-    
-    // Try to get first existing completed transaction from database
-    try {
-      const transactions = await db.getTransactions();
-      if (transactions && transactions.length > 0) {
-        const validTxn = transactions.find((t: any) => t.status === 'completed' && t.id);
-        if (validTxn) {
-          console.log(`[GIVEAWAY] ✓ Using existing transaction: ${validTxn.id}`);
-          return validTxn.id;
-        }
-      }
-    } catch (getTxnError: any) {
-      console.warn(`[GIVEAWAY] Could not fetch existing transactions, attempting new creation`);
-    }
-
-    // Create a system giveaway transaction
-    const transactionId = `txn_${giveawayId}`;
-    
-    // Use first user's ID instead of non-existent system user to satisfy FK constraint
-    const buyerId = firstUserId || 'SYSTEM';
-    const sellerId = firstUserId || 'SYSTEM';
-    
-    const systemTransaction = {
-      id: transactionId,
-      productId: 'giveaway_promotion',
-      buyerId: buyerId,
-      sellerId: sellerId,
-      amount: 0,
-      cryptocurrency: 'USD',
-      walletAddress: 'SYSTEM_GIVEAWAY',
-      status: 'completed' as const,
-      paymentConfirmedByAdmin: true,
-      buyerConfirmedRelease: true,
-      itemDeliveryContent: `Giveaway Campaign ${giveawayId}`,
-      createdAt: new Date().toISOString(),
-      confirmedAt: new Date().toISOString(),
-    };
-
-    try {
-      await db.createTransaction(systemTransaction);
-      console.log(`[GIVEAWAY] ✓ System transaction created: ${transactionId}`);
-      return transactionId;
-    } catch (createError: any) {
-      console.error(`[GIVEAWAY] System transaction creation failed: ${createError.message}`);
-      // Even if it fails, return the ID - messages might work if reusing existing transaction
-      return transactionId;
-    }
-  } catch (error: any) {
-    console.error(`[GIVEAWAY] Critical error setting up transaction:`, error.message);
-    throw new Error(`Cannot setup transaction for giveaway: ${error.message}`);
-  }
-}
-
 // Helper function to check if user is eligible
 async function isUserEligible(userId: string, userBalance: number): Promise<boolean> {
   // Check balance threshold
@@ -121,19 +64,12 @@ async function isUserEligible(userId: string, userBalance: number): Promise<bool
 async function startGiveaway() {
   try {
     console.log('[GIVEAWAY] Starting giveaway...');
-    console.log('[GIVEAWAY] Calling db.getAllUsers()');
 
-    let allUsers = [];
-    try {
-      allUsers = await db.getAllUsers();
-      console.log(`[GIVEAWAY] Successfully retrieved ${allUsers.length} users from database`);
-    } catch (dbError: any) {
-      console.error('[GIVEAWAY] Critical error calling db.getAllUsers():', dbError);
-      throw new Error(`Failed to fetch all users: ${dbError.message}`);
-    }
+    // Get all users
+    const allUsers = await db.getAllUsers();
+    console.log(`[GIVEAWAY] Retrieved ${allUsers.length} users`);
 
     if (!allUsers || allUsers.length === 0) {
-      console.warn('[GIVEAWAY] No users found in system');
       return NextResponse.json({
         success: false,
         message: 'No users found in system',
@@ -143,32 +79,46 @@ async function startGiveaway() {
 
     const giveawayId = `giveaway_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    console.log(`[GIVEAWAY] Creating giveaway record: ${giveawayId}`);
+    // Start giveaway record
     await db.startGiveaway(giveawayId, GIVEAWAY_DISCOUNT, GIVEAWAY_DURATION_HOURS);
-    console.log(`[GIVEAWAY] Giveaway record created successfully`);
+    console.log(`[GIVEAWAY] Giveaway started: ${giveawayId}`);
 
-    // Create system transaction for foreign key constraint
-    console.log(`[GIVEAWAY] Setting up system transaction for message references`);
-    const systemTransactionId = await getSystemGiveawayTransactionId(giveawayId, allUsers[0]?.id);
-    console.log(`[GIVEAWAY] System transaction ready: ${systemTransactionId}`);
+    // Get first existing valid transaction to use as FK reference
+    // This is the simplest, most bulletproof approach
+    const allTransactions = await db.getTransactions();
+    let validTransactionId = '';
+    
+    if (allTransactions && allTransactions.length > 0) {
+      const existingTxn = allTransactions.find((t: any) => t && t.id);
+      if (existingTxn) {
+        validTransactionId = existingTxn.id;
+        console.log(`[GIVEAWAY] Using existing transaction: ${validTransactionId}`);
+      }
+    }
+
+    if (!validTransactionId) {
+      console.error('[GIVEAWAY] CRITICAL: No valid transactions in database to reference');
+      return NextResponse.json({
+        success: false,
+        message: 'Database error: No valid transactions found',
+        count: 0,
+      });
+    }
 
     let notificationCount = 0;
     let eligibleCount = 0;
     const errors: string[] = [];
 
-    console.log(`[GIVEAWAY] Starting notification loop for ${allUsers.length} users`);
+    console.log(`[GIVEAWAY] Broadcasting to ${allUsers.length} users with transaction: ${validTransactionId}`);
 
+    // Send message to ALL users
     for (const user of allUsers) {
       try {
-        console.log(`[GIVEAWAY] Processing user: ${user.id}`);
-        
         if (!user.id) {
           console.warn('[GIVEAWAY] User has no ID, skipping');
-          errors.push('User with no ID');
           continue;
         }
 
-        const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const userBalance = user.balance ?? 0;
         
         // Check eligibility
@@ -176,19 +126,19 @@ async function startGiveaway() {
         try {
           isEligible = await isUserEligible(user.id, userBalance);
         } catch (eligError: any) {
-          console.warn(`[GIVEAWAY] Error checking eligibility for ${user.id}:`, eligError.message);
+          console.warn(`[GIVEAWAY] Error checking eligibility for ${user.id}`);
           isEligible = false;
         }
         
         if (isEligible) eligibleCount++;
-        console.log(`[GIVEAWAY] User ${user.id} - Balance: $${userBalance}, Eligible: ${isEligible}`);
 
+        // Generate message
         const userMessage = generateGiveawayMessage(isEligible, userBalance);
-        console.log(`[GIVEAWAY] Generated message for user ${user.id} (${userMessage.length} chars)`);
 
-        const messageObject: any = {
-          id: messageId,
-          transactionId: systemTransactionId,
+        // Create message object with valid transaction ID
+        const messageObject = {
+          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          transactionId: validTransactionId,
           buyerId: user.id,
           sellerId: 'SYSTEM',
           productName: 'Special Giveaway Alert',
@@ -200,35 +150,17 @@ async function startGiveaway() {
           createdAt: new Date().toISOString(),
         };
 
-        console.log(`[GIVEAWAY] Creating message for user ${user.id}:`, {
-          id: messageId,
-          transactionId: systemTransactionId,
-          buyerId: user.id,
-          eligible: isEligible,
-        });
-
-        // Create message - this is critical and must not fail silently
-        try {
-          await db.createItemMessage(messageObject);
-          notificationCount++;
-          console.log(`[GIVEAWAY] ✓ Message successfully created for user ${user.id}`);
-        } catch (createError: any) {
-          const errorMsg = `Failed to create message for user ${user.id}: ${createError.message}`;
-          errors.push(errorMsg);
-          console.error(`[GIVEAWAY] ✗ ${errorMsg}`);
-        }
+        // Create message
+        await db.createItemMessage(messageObject);
+        notificationCount++;
+        console.log(`[GIVEAWAY] ✓ Message sent to ${user.id}`);
       } catch (userError: any) {
-        const errorMsg = `User ${user.id}: ${userError.message || String(userError)}`;
-        errors.push(errorMsg);
-        console.error(`[GIVEAWAY] FAILED to process user ${user.id}:`, userError);
+        console.error(`[GIVEAWAY] ✗ Failed for user ${user.id}: ${userError.message}`);
+        errors.push(userError.message);
       }
     }
 
-    console.log(`[GIVEAWAY] Giveaway complete. Notified: ${notificationCount}/${allUsers.length}, Eligible: ${eligibleCount}`);
-
-    if (errors.length > 0) {
-      console.error('[GIVEAWAY] Creation errors:', errors);
-    }
+    console.log(`[GIVEAWAY] Complete: Notified ${notificationCount}/${allUsers.length}, Eligible: ${eligibleCount}`);
 
     return NextResponse.json({
       success: notificationCount > 0,
@@ -242,7 +174,7 @@ async function startGiveaway() {
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error: any) {
-    console.error('[GIVEAWAY] CRITICAL Error starting giveaway:', error);
+    console.error('[GIVEAWAY] Error:', error.message);
     return NextResponse.json(
       { error: error.message || 'Failed to start giveaway' },
       { status: 500 }
