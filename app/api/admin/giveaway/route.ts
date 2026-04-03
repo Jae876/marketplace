@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 }
 
 // Helper function to get or create a system transaction for giveaway messages  
-async function getSystemGiveawayTransactionId(giveawayId: string): Promise<string> {
+async function getSystemGiveawayTransactionId(giveawayId: string, firstUserId?: string): Promise<string> {
   try {
     console.log(`[GIVEAWAY] Setting up system transaction for giveaway: ${giveawayId}`);
     
@@ -55,19 +55,24 @@ async function getSystemGiveawayTransactionId(giveawayId: string): Promise<strin
         }
       }
     } catch (getTxnError: any) {
-      console.warn(`[GIVEAWAY] Could not fetch existing transactions, will create new one`);
+      console.warn(`[GIVEAWAY] Could not fetch existing transactions, attempting new creation`);
     }
 
     // Create a system giveaway transaction
     const transactionId = `txn_${giveawayId}`;
+    
+    // Use first user's ID instead of non-existent system user to satisfy FK constraint
+    const buyerId = firstUserId || 'SYSTEM';
+    const sellerId = firstUserId || 'SYSTEM';
+    
     const systemTransaction = {
       id: transactionId,
       productId: 'giveaway_promotion',
-      buyerId: 'giveaway_system',
-      sellerId: 'giveaway_system',
+      buyerId: buyerId,
+      sellerId: sellerId,
       amount: 0,
       cryptocurrency: 'USD',
-      walletAddress: 'SYSTEM',
+      walletAddress: 'SYSTEM_GIVEAWAY',
       status: 'completed' as const,
       paymentConfirmedByAdmin: true,
       buyerConfirmedRelease: true,
@@ -81,8 +86,8 @@ async function getSystemGiveawayTransactionId(giveawayId: string): Promise<strin
       console.log(`[GIVEAWAY] ✓ System transaction created: ${transactionId}`);
       return transactionId;
     } catch (createError: any) {
-      console.warn(`[GIVEAWAY] System transaction creation failed: ${createError.message}`);
-      // Still return the ID - if it fails here, we'll get explicit FK errors in message creation
+      console.error(`[GIVEAWAY] System transaction creation failed: ${createError.message}`);
+      // Even if it fails, return the ID - messages might work if reusing existing transaction
       return transactionId;
     }
   } catch (error: any) {
@@ -144,7 +149,7 @@ async function startGiveaway() {
 
     // Create system transaction for foreign key constraint
     console.log(`[GIVEAWAY] Setting up system transaction for message references`);
-    const systemTransactionId = await getSystemGiveawayTransactionId(giveawayId);
+    const systemTransactionId = await getSystemGiveawayTransactionId(giveawayId, allUsers[0]?.id);
     console.log(`[GIVEAWAY] System transaction ready: ${systemTransactionId}`);
 
     let notificationCount = 0;
