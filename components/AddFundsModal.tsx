@@ -273,7 +273,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                     onClick={() => setStep('crypto')}
                     className="text-xs text-slate-400 hover:text-slate-300 transition-colors flex items-center space-x-1"
                   >
-                    <span>ΓåÉ</span>
+                    <span>←</span>
                     <span>Change Crypto</span>
                   </button>
                   {selectedCrypto && (

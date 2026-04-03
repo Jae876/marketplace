@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       id: depositId,
       productId: 'system_deposit', // Special system product for all deposits (satisfies FK constraint)
       buyerId: decoded.userId,
-      sellerId: 'system_deposit', // System deposit marker
+      sellerId: decoded.userId, // Deposit to self - buyer is also seller for balance credits
       amount: amount,
       cryptocurrency: cryptocurrency,
       walletAddress: walletAddress,
