@@ -73,6 +73,13 @@ export interface ItemMessage {
   createdAt: string;
 }
 
+export interface Giveaway {
+  id: string;
+  discount: number;
+  durationHours: number;
+  startedAt: string;
+}
+
 export interface Wallet {
   id: string;
   userId: string;
@@ -91,6 +98,7 @@ class Database {
   private transactionsFile = path.join(DATA_DIR, 'transactions.json');
   private walletsFile = path.join(DATA_DIR, 'wallets.json');
   private itemMessagesFile = path.join(DATA_DIR, 'item-messages.json');
+  private giveawayFile = path.join(DATA_DIR, 'giveaway.json');
 
   private readFile<T>(filePath: string, defaultValue: T): T {
     try {
@@ -154,6 +162,10 @@ class Database {
   // Users
   getUsers(): User[] {
     return this.readFile(this.usersFile, []);
+  }
+
+  getAllUsers(): User[] {
+    return this.getUsers();
   }
 
   getUserByEmail(email: string): User | undefined {
@@ -459,20 +471,56 @@ class Database {
     // JSON database doesn't support referrals
   }
 
-  // Giveaway methods - stubs for JSON database (giveaways are PostgreSQL-only for production)
+  // Giveaway methods
   startGiveaway(id: string, discount: number, hours: number): void {
-    // JSON database doesn't support persistent giveaway state
-    console.log('Giveaway feature only available with PostgreSQL database');
+    try {
+      const giveaway = {
+        id,
+        discount,
+        durationHours: hours,
+        startedAt: new Date().toISOString()
+      };
+      this.writeFile(this.giveawayFile, giveaway);
+      console.log(`[DB] Giveaway started: ${id}, discount $${discount}, duration ${hours}h`);
+    } catch (error: any) {
+      console.error('[DB] Error starting giveaway:', error);
+      throw error;
+    }
   }
 
-  getActiveGiveaway(): any | null {
-    // JSON database doesn't support giveaway state
-    return null;
+  getActiveGiveaway(): Giveaway | null {
+    try {
+      const giveaway = this.readFile(this.giveawayFile, null);
+      if (!giveaway) return null;
+
+      const started = new Date(giveaway.startedAt);
+      const durationMs = giveaway.durationHours * 60 * 60 * 1000;
+      const now = Date.now();
+
+      if (now - started.getTime() > durationMs) {
+        // Giveaway expired, end it
+        console.log(`[DB] Giveaway ${giveaway.id} expired, ending`);
+        this.endGiveaway(giveaway.id);
+        return null;
+      }
+
+      console.log(`[DB] Active giveaway found: ${giveaway.id}`);
+      return giveaway;
+    } catch (error: any) {
+      console.error('[DB] Error getting active giveaway:', error);
+      return null;
+    }
   }
 
   endGiveaway(id: string): void {
-    // JSON database doesn't support giveaway state
-    console.log('Giveaway feature only available with PostgreSQL database');
+    try {
+      if (fs.existsSync(this.giveawayFile)) {
+        fs.unlinkSync(this.giveawayFile);
+        console.log(`[DB] Giveaway ended: ${id}`);
+      }
+    } catch (error: any) {
+      console.error('[DB] Error ending giveaway:', error);
+    }
   }
 }
 
@@ -893,7 +941,7 @@ class DatabaseWrapper {
     }
   }
 
-  async getActiveGiveaway(): Promise<any | null> {
+  async getActiveGiveaway(): Promise<Giveaway | null> {
     if (this.isAsync) {
       return await this.backend.getActiveGiveaway();
     } else {
