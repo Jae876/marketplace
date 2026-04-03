@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import AddFundsModal from './AddFundsModal';
@@ -166,7 +166,7 @@ export default function BalanceBadge({ balance, trustScore = 0, recentDeposits =
 
         {/* Click indicator */}
         <div className="ml-auto text-gray-500 group-hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-all">
-          <span className="text-xs">→</span>
+          <span className="text-xs">ΓåÆ</span>
         </div>
       </button>
 
@@ -217,7 +217,7 @@ export default function BalanceBadge({ balance, trustScore = 0, recentDeposits =
                   }}
                   className="text-slate-500 hover:text-slate-300 text-2xl w-10 h-10 rounded-full hover:bg-slate-800/50 transition-all flex items-center justify-center flex-shrink-0"
                 >
-                  ✕
+                  Γ£ò
                 </button>
               </div>
             </div>

@@ -16,6 +16,9 @@ export async function GET(req: NextRequest) {
     let products = await db.getAllProducts();
     console.log('[PRODUCTS] Total products from database:', products.length);
 
+    // Filter out system_deposit product (internal only, for FK constraint)
+    products = products.filter((p: any) => p.id !== 'system_deposit');
+
     // Filter by region
     if (region) {
       products = products.filter((p: any) => 

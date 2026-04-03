@@ -67,14 +67,14 @@ export async function POST(req: NextRequest) {
     const cryptoInfo = getCryptoById(cryptocurrency);
     const cryptoAmount = convertUsdToCrypto(amount, cryptocurrency);
 
-    // Create deposit transaction (productId is NULL for direct deposits)
+    // Create deposit transaction (uses system_deposit product for FK constraint)
     const depositId = `dep_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     await db.createTransaction({
       id: depositId,
-      productId: null as any,
+      productId: 'system_deposit', // Special system product for all deposits (satisfies FK constraint)
       buyerId: decoded.userId,
-      sellerId: 'system_deposit',
+      sellerId: 'system_deposit', // System deposit marker
       amount: amount,
       cryptocurrency: cryptocurrency,
       walletAddress: walletAddress,

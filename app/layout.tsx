@@ -1,11 +1,16 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import MessageCenter from '@/components/MessageCenter';
 
 export const metadata: Metadata = {
   title: 'Russian Roulette - Premium Marketplace',
   description: 'Experience the thrill of a premium marketplace with Russian Roulette. Buy and sell items with cryptocurrency in an exclusive environment.',
-  viewport: 'width=device-width, initial-scale=1.0, viewport-fit=cover',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1.0,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

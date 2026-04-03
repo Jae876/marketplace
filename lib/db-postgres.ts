@@ -108,33 +108,24 @@ async function initializeTables() {
     `;
     console.log('[NEON] ✓ transactions table created/exists');
 
-    // Critical migration: Drop FK constraint on productId to allow deposits
+    // Ensure special SYSTEM_DEPOSIT product exists for direct balance deposits
     try {
-      // Check if constraint exists before dropping
-      const checkConstraint = await sql`
-        SELECT constraint_name 
-        FROM information_schema.table_constraints 
-        WHERE table_name='transactions' AND constraint_name='transactions_productId_fkey'
-      `;
-      
-      if ((checkConstraint as any[]).length > 0) {
-        await sql`ALTER TABLE transactions DROP CONSTRAINT "transactions_productId_fkey"`;
-        console.log('[NEON] ✓ Migration: Dropped productId FK constraint');
-      } else {
-        console.log('[NEON] ✓ Migration: FK constraint already removed');
+      const systemDepositExists = await sql`SELECT id FROM products WHERE id = 'system_deposit' LIMIT 1`;
+      if (!systemDepositExists || (systemDepositExists as any[]).length === 0) {
+        try {
+          await sql`
+            INSERT INTO products (id, name, description, price, region, type, size, image, "createdAt")
+            VALUES ('system_deposit', 'System Deposit', 'Direct balance deposit', 0, 'system', 'deposit', 'system', 'system', NOW())
+          `;
+          console.log('[NEON] ✓ System deposit product created for FK constraint');
+        } catch (insertErr: any) {
+          if (!insertErr.message?.includes('unique constraint')) {
+            console.log('[NEON] System deposit product creation note:', insertErr.message);
+          }
+        }
       }
-    } catch (dropError: any) {
-      console.log('[NEON] FK constraint status:', dropError.message);
-    }
-
-    // Make productId nullable
-    try {
-      await sql`ALTER TABLE transactions ALTER COLUMN "productId" DROP NOT NULL`;
-      console.log('[NEON] ✓ Migration: productId is now nullable');
-    } catch (nullError: any) {
-      if (!nullError.message?.includes('does not have a NOT NULL')) {
-        console.log('[NEON] productId nullable status:', nullError.message);
-      }
+    } catch (sysDepositError: any) {
+      console.warn('[NEON] Warning: Could not ensure system deposit product:', sysDepositError.message);
     }
 
     // Create item_messages table with isRead column
