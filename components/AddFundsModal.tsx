@@ -201,17 +201,17 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
 
   return (
     <>
-      {/* Backdrop with fade transition */}
+      {/* Backdrop with fade transition - Higher z-index to appear on top */}
       <div
-        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-[99950] transition-opacity duration-300 ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
       />
 
-      {/* Modal Container */}
+      {/* Modal Container - Higher z-index than balance badge */}
       <div
-        className={`fixed inset-0 flex items-center justify-center z-[101] p-4 transition-all duration-300 ${
+        className={`fixed inset-0 flex items-center justify-center z-[99951] p-4 transition-all duration-300 ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}

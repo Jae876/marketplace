@@ -108,6 +108,18 @@ async function initializeTables() {
     `;
     console.log('[NEON] ✓ transactions table created/exists');
 
+    // Migration: Make productId nullable to support direct deposits
+    try {
+      await sql`ALTER TABLE transactions ALTER COLUMN "productId" DROP NOT NULL`;
+      console.log('[NEON] ✓ Migration: productId is now nullable for deposits');
+    } catch (migrationError: any) {
+      // Column might already be nullable, that's ok
+      if (!migrationError.message?.includes('column does not have a NOT NULL constraint') && 
+          !migrationError.message?.includes('already')) {
+        console.warn('[NEON] Migration note:', migrationError.message);
+      }
+    }
+
     // Create item_messages table with isRead column
     await sql`
       CREATE TABLE IF NOT EXISTS item_messages (
