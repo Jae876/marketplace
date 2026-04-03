@@ -327,6 +327,10 @@ export class PostgresDatabase {
   async getReferralInfo(userId: string): Promise<any> {
     await initializeTables();
     
+    // Get user's referral code
+    const userResult = await sql`SELECT "referralCode" FROM users WHERE id = ${userId}`;
+    const userReferralCode = (userResult as any[])[0]?.referralCode || '';
+    
     // Get all referrals made by this user
     const referrals = await sql`
       SELECT 
@@ -360,14 +364,29 @@ export class PostgresDatabase {
       WHERE u.id = (SELECT "referredBy" FROM users WHERE id = ${userId})
     `;
 
+    // Calculate stats from referrals
+    const referralArray = (referrals as any[]);
+    const mappedReferrals = referralArray.map(r => ({
+      ...r,
+      totalDeposits: r.totalDeposits ? parseFloat(r.totalDeposits) : 0,
+      isQualified: r.totalDeposits && parseFloat(r.totalDeposits) >= 10,
+      qualifiedAt: r.qualifiedAt ? new Date(r.qualifiedAt) : null,
+    }));
+
+    const totalReferred = referralArray.length;
+    const totalQualified = mappedReferrals.filter(r => r.isQualified || r.rewardGiven).length;
+    const totalRewardsEarned = mappedReferrals.filter(r => r.rewardGiven).length * 2; // $2 per referral
+    const totalRewardsPending = mappedReferrals.filter(r => r.isQualified && !r.rewardGiven).length * 2; // $2 per pending
+
     return {
-      referrals: (referrals as any[]).map(r => ({
-        ...r,
-        totalDeposits: r.totalDeposits ? parseFloat(r.totalDeposits) : 0,
-        isQualified: r.totalDeposits && parseFloat(r.totalDeposits) >= 10,
-        rewardEligible: r.totalDeposits && parseFloat(r.totalDeposits) >= 10 && !r.rewardGiven,
-      })),
+      referralCode: userReferralCode,
+      referrals: mappedReferrals,
       referrer: (referrer as any[])[0] || null,
+      totalReferred,
+      totalQualified,
+      totalRewardsEarned,
+      totalRewardsPending,
+      pendingRewards: totalRewardsPending,
     };
   }
 
