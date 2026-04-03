@@ -83,24 +83,65 @@ async function startGiveaway() {
     await db.startGiveaway(giveawayId, GIVEAWAY_DISCOUNT, GIVEAWAY_DURATION_HOURS);
     console.log(`[GIVEAWAY] Giveaway started: ${giveawayId}`);
 
-    // Get first existing valid transaction to use as FK reference
-    // This is the simplest, most bulletproof approach
-    const allTransactions = await db.getTransactions();
+    // Get or create a system transaction for FK reference
     let validTransactionId = '';
     
-    if (allTransactions && allTransactions.length > 0) {
-      const existingTxn = allTransactions.find((t: any) => t && t.id);
-      if (existingTxn) {
-        validTransactionId = existingTxn.id;
-        console.log(`[GIVEAWAY] Using existing transaction: ${validTransactionId}`);
+    // Try to find existing transaction
+    try {
+      const allTransactions = await db.getTransactions();
+      if (allTransactions && allTransactions.length > 0) {
+        const existingTxn = allTransactions.find((t: any) => t && t.id);
+        if (existingTxn) {
+          validTransactionId = existingTxn.id;
+          console.log(`[GIVEAWAY] ✓ Found existing transaction: ${validTransactionId}`);
+        }
+      }
+    } catch (e: any) {
+      console.log(`[GIVEAWAY] Could not fetch existing transactions`);
+    }
+
+    // If no existing transaction, MUST create one
+    if (!validTransactionId) {
+      try {
+        console.log(`[GIVEAWAY] No existing transactions. Creating system transaction...`);
+        const firstUser = allUsers[0];
+        
+        const systemTxn = {
+          id: `sys_giveaway_${Date.now()}`,
+          productId: 'giveaway_broadcast',
+          buyerId: firstUser.id,
+          sellerId: firstUser.id,
+          amount: 0,
+          cryptocurrency: 'USD',
+          walletAddress: 'SYSTEM',
+          status: 'completed' as const,
+          paymentConfirmedByAdmin: true,
+          buyerConfirmedRelease: true,
+          itemDeliveryContent: 'System Giveaway Broadcast',
+          createdAt: new Date().toISOString(),
+          confirmedAt: new Date().toISOString(),
+        };
+        
+        console.log(`[GIVEAWAY] Creating transaction with buyerId: ${firstUser.id}`, systemTxn);
+        await db.createTransaction(systemTxn);
+        validTransactionId = systemTxn.id;
+        console.log(`[GIVEAWAY] ✓✓✓ System transaction created: ${validTransactionId}`);
+      } catch (createErr: any) {
+        console.error(`[GIVEAWAY] FATAL: Failed to create system transaction:`, createErr);
+        return NextResponse.json({
+          success: false,
+          message: `Cannot start giveaway: ${createErr.message}`,
+          count: 0,
+        });
       }
     }
 
+    // Verify we have a transaction ID before proceeding
     if (!validTransactionId) {
-      console.error('[GIVEAWAY] CRITICAL: No valid transactions in database to reference');
+      console.error('[GIVEAWAY] FATAL: No valid transaction ID available');
       return NextResponse.json({
         success: false,
-        message: 'Database error: No valid transactions found',
+        message: 'Database error: Cannot obtain transaction reference',
         count: 0,
       });
     }
