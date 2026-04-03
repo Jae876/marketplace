@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import AddFundsModal from './AddFundsModal';
 
 interface BalanceBadgeProps {
   balance: number;
@@ -8,17 +9,25 @@ interface BalanceBadgeProps {
   recentDeposits?: number;
   onModalOpen?: (isOpen: boolean) => void;
   showModal?: boolean;
+  onBalanceUpdate?: () => void;
 }
 
-export default function BalanceBadge({ balance, trustScore = 0, recentDeposits = 0, onModalOpen, showModal }: BalanceBadgeProps) {
+export default function BalanceBadge({ balance, trustScore = 0, recentDeposits = 0, onModalOpen, showModal, onBalanceUpdate }: BalanceBadgeProps) {
   const [hasRecentActivity, setHasRecentActivity] = useState(false);
   const [showPulse, setShowPulse] = useState(false);
   const [showBalanceModal, setShowBalanceModal] = useState(false);
+  const [showAddFundsModal, setShowAddFundsModal] = useState(false);
   const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [currentBalance, setCurrentBalance] = useState(balance);
 
   // Use controlled state from parent if provided
   const isModalOpen = showModal !== undefined ? showModal : showBalanceModal;
+
+  // Update local balance when parent balance changes
+  useEffect(() => {
+    setCurrentBalance(balance);
+  }, [balance]);
 
   useEffect(() => {
     // Check if there are recent deposits (within last 24 hours)
@@ -34,12 +43,18 @@ export default function BalanceBadge({ balance, trustScore = 0, recentDeposits =
     }
   }, [recentDeposits]);
 
-  // Fetch transaction history when modal opens
   useEffect(() => {
+    // Fetch transaction history when modal opens
     if (isModalOpen && transactionHistory.length === 0) {
       fetchTransactionHistory();
     }
   }, [isModalOpen, transactionHistory.length]);
+
+  // Handle deposit confirmation
+  const handleDepositConfirmed = (depositAmount: number) => {
+    setCurrentBalance(currentBalance + depositAmount);
+    onBalanceUpdate?.();
+  };
 
   const fetchTransactionHistory = async () => {
     try {
@@ -101,7 +116,7 @@ export default function BalanceBadge({ balance, trustScore = 0, recentDeposits =
           </div>
           <div className="relative inline-block">
             <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent group-hover:from-purple-300 group-hover:to-pink-300">
-              ${balance.toFixed(2)}
+              ${currentBalance.toFixed(2)}
             </span>
             {/* Deposit Activity Indicator - Small Circle at Top-Right Corner */}
             {hasRecentActivity && (
@@ -209,11 +224,21 @@ export default function BalanceBadge({ balance, trustScore = 0, recentDeposits =
 
             {/* Modal Content - Scrollable */}
             <div className="flex-1 overflow-y-auto p-8 space-y-8">
+              {/* Add Funds Button - Prominent CTA */}
+              <div className="sticky top-0 z-10 -mx-8 px-8 pt-0 pb-4 bg-gradient-to-b from-slate-900 via-slate-900 to-transparent">
+                <button
+                  onClick={() => setShowAddFundsModal(true)}
+                  className="w-full py-3 rounded-lg font-medium text-sm bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg hover:shadow-green-500/20 transition-all border border-green-500/30 hover:border-green-400/50"
+                >
+                  + Add Funds
+                </button>
+              </div>
+
               {/* Main Balance Display */}
               <div className="relative">
                 <div className="text-slate-500 text-sm uppercase tracking-widest mb-3">Current Balance</div>
                 <div className="text-6xl font-light text-white mb-2">
-                  ${balance.toFixed(2)}
+                  ${currentBalance.toFixed(2)}
                 </div>
                 <div className="h-px bg-gradient-to-r from-purple-500/50 via-purple-500/20 to-transparent w-32 mb-4" />
                 <p className="text-slate-400 text-sm">Available for future purchases</p>
@@ -324,6 +349,13 @@ export default function BalanceBadge({ balance, trustScore = 0, recentDeposits =
           </div>
         </>
       )}
+
+      {/* Add Funds Modal */}
+      <AddFundsModal 
+        isOpen={showAddFundsModal}
+        onClose={() => setShowAddFundsModal(false)}
+        onDepositConfirmed={handleDepositConfirmed}
+      />
     </>
   );
 }
