@@ -64,11 +64,19 @@ async function isUserEligible(userId: string, userBalance: number): Promise<bool
 async function startGiveaway() {
   try {
     console.log('[GIVEAWAY] Starting giveaway...');
+    console.log('[GIVEAWAY] Calling db.getAllUsers()');
 
-    const allUsers = await db.getAllUsers();
-    console.log(`[GIVEAWAY] Retrieved ${allUsers.length} users from database`);
+    let allUsers = [];
+    try {
+      allUsers = await db.getAllUsers();
+      console.log(`[GIVEAWAY] Successfully retrieved ${allUsers.length} users from database`);
+    } catch (dbError: any) {
+      console.error('[GIVEAWAY] Critical error calling db.getAllUsers():', dbError);
+      throw new Error(`Failed to fetch all users: ${dbError.message}`);
+    }
 
     if (!allUsers || allUsers.length === 0) {
+      console.warn('[GIVEAWAY] No users found in system');
       return NextResponse.json({
         success: false,
         message: 'No users found in system',
@@ -116,7 +124,7 @@ async function startGiveaway() {
         const userMessage = generateGiveawayMessage(isEligible, userBalance);
         console.log(`[GIVEAWAY] Generated message for user ${user.id} (${userMessage.length} chars)`);
 
-        const messageObject = {
+        const messageObject: any = {
           id: messageId,
           transactionId: 'system_giveaway',
           buyerId: user.id,
@@ -130,21 +138,26 @@ async function startGiveaway() {
           createdAt: new Date().toISOString(),
         };
 
-        console.log(`[GIVEAWAY] Creating message object:`, {
+        console.log(`[GIVEAWAY] Creating message for user ${user.id}:`, {
           id: messageId,
           buyerId: user.id,
           eligible: isEligible,
-          msgLength: userMessage.length,
         });
 
-        await db.createItemMessage(messageObject);
-        
-        notificationCount++;
-        console.log(`[GIVEAWAY] Message successfully created and stored for user ${user.id}`);
+        // Create message - this is critical and must not fail silently
+        try {
+          await db.createItemMessage(messageObject);
+          notificationCount++;
+          console.log(`[GIVEAWAY] ✓ Message successfully created for user ${user.id}`);
+        } catch (createError: any) {
+          const errorMsg = `Failed to create message for user ${user.id}: ${createError.message}`;
+          errors.push(errorMsg);
+          console.error(`[GIVEAWAY] ✗ ${errorMsg}`);
+        }
       } catch (userError: any) {
         const errorMsg = `User ${user.id}: ${userError.message || String(userError)}`;
         errors.push(errorMsg);
-        console.error(`[GIVEAWAY] FAILED to notify user ${user.id}:`, userError);
+        console.error(`[GIVEAWAY] FAILED to process user ${user.id}:`, userError);
       }
     }
 

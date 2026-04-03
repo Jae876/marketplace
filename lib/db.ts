@@ -712,7 +712,6 @@ class DatabaseWrapper {
         return await this.backend.createItemMessage(message);
       } else {
         this.backend.createItemMessage(message);
-        return Promise.resolve();
       }
     } catch (error: any) {
       console.error('[DB] Error creating item message:', error);
