@@ -654,13 +654,26 @@ export class PostgresDatabase {
   }
 
   async createItemMessage(message: ItemMessage): Promise<void> {
-    await initializeTables();
-    await sql`
-      INSERT INTO item_messages (id, "transactionId", "buyerId", "sellerId", "productName", "itemContent", amount, cryptocurrency, "isRead", "isWelcome", "createdAt")
-      VALUES (${message.id}, ${message.transactionId}, ${message.buyerId}, ${message.sellerId},
-              ${message.productName}, ${message.itemContent}, ${message.amount}, ${message.cryptocurrency},
-              ${message.isRead ?? false}, ${message.isWelcome ?? false}, ${message.createdAt})
-    `;
+    try {
+      if (!message || !message.id || !message.buyerId) {
+        throw new Error('Invalid message: missing required fields (id, buyerId)');
+      }
+      
+      await initializeTables();
+      console.log(`[POSTGRES] Creating message for user ${message.buyerId}`);
+      
+      await sql`
+        INSERT INTO item_messages (id, "transactionId", "buyerId", "sellerId", "productName", "itemContent", amount, cryptocurrency, "isRead", "isWelcome", "createdAt")
+        VALUES (${message.id}, ${message.transactionId}, ${message.buyerId}, ${message.sellerId},
+                ${message.productName}, ${message.itemContent}, ${message.amount}, ${message.cryptocurrency},
+                ${message.isRead ?? false}, ${message.isWelcome ?? false}, ${message.createdAt})
+      `;
+      
+      console.log(`[POSTGRES] Message created successfully for user ${message.buyerId}`);
+    } catch (error: any) {
+      console.error(`[POSTGRES] Error creating message for user ${message?.buyerId}:`, error);
+      throw error;
+    }
   }
 
   async getItemMessages(receiverId: string): Promise<ItemMessage[]> {

@@ -80,6 +80,7 @@ async function startGiveaway() {
     
     console.log(`[GIVEAWAY] Creating giveaway record: ${giveawayId}`);
     await db.startGiveaway(giveawayId, GIVEAWAY_DISCOUNT, GIVEAWAY_DURATION_HOURS);
+    console.log(`[GIVEAWAY] Giveaway record created successfully`);
 
     let notificationCount = 0;
     let eligibleCount = 0;
@@ -89,23 +90,33 @@ async function startGiveaway() {
 
     for (const user of allUsers) {
       try {
+        console.log(`[GIVEAWAY] Processing user: ${user.id}`);
+        
         if (!user.id) {
-          console.warn('[GIVEAWAY] Skipping user with no ID');
+          console.warn('[GIVEAWAY] User has no ID, skipping');
+          errors.push('User with no ID');
           continue;
         }
 
         const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const userBalance = user.balance ?? 0;
         
-        // Check eligibility: balance >= $10 OR total spent >= $10
-        const isEligible = await isUserEligible(user.id, userBalance);
+        // Check eligibility
+        let isEligible = false;
+        try {
+          isEligible = await isUserEligible(user.id, userBalance);
+        } catch (eligError: any) {
+          console.warn(`[GIVEAWAY] Error checking eligibility for ${user.id}:`, eligError.message);
+          isEligible = false;
+        }
+        
         if (isEligible) eligibleCount++;
+        console.log(`[GIVEAWAY] User ${user.id} - Balance: $${userBalance}, Eligible: ${isEligible}`);
 
         const userMessage = generateGiveawayMessage(isEligible, userBalance);
+        console.log(`[GIVEAWAY] Generated message for user ${user.id} (${userMessage.length} chars)`);
 
-        console.log(`[GIVEAWAY] Creating message for user ${user.id} (eligible: ${isEligible})`);
-
-        await db.createItemMessage({
+        const messageObject = {
           id: messageId,
           transactionId: 'system_giveaway',
           buyerId: user.id,
@@ -117,22 +128,31 @@ async function startGiveaway() {
           isRead: false,
           isWelcome: false,
           createdAt: new Date().toISOString(),
+        };
+
+        console.log(`[GIVEAWAY] Creating message object:`, {
+          id: messageId,
+          buyerId: user.id,
+          eligible: isEligible,
+          msgLength: userMessage.length,
         });
 
+        await db.createItemMessage(messageObject);
+        
         notificationCount++;
-        console.log(`[GIVEAWAY] Message sent to user ${user.id}`);
+        console.log(`[GIVEAWAY] Message successfully created and stored for user ${user.id}`);
       } catch (userError: any) {
-        const errorMsg = `User ${user.id}: ${userError.message}`;
+        const errorMsg = `User ${user.id}: ${userError.message || String(userError)}`;
         errors.push(errorMsg);
-        console.error(`[GIVEAWAY] ${errorMsg}`);
+        console.error(`[GIVEAWAY] FAILED to notify user ${user.id}:`, userError);
       }
     }
 
-    console.log(`[GIVEAWAY] Giveaway started. Notified: ${notificationCount}, Eligible: ${eligibleCount}`);
+    console.log(`[GIVEAWAY] Giveaway complete. Notified: ${notificationCount}/${allUsers.length}, Eligible: ${eligibleCount}`);
 
     return NextResponse.json({
-      success: true,
-      message: `Giveaway LIVE! Messaging ALL ${notificationCount}/${allUsers.length} users. ${eligibleCount} eligible for $${GIVEAWAY_DISCOUNT} discount.`,
+      success: notificationCount > 0,
+      message: `Giveaway LIVE! Messaged ${notificationCount}/${allUsers.length} users. ${eligibleCount} eligible for $${GIVEAWAY_DISCOUNT} discount.`,
       count: notificationCount,
       total: allUsers.length,
       eligibleCount: eligibleCount,
@@ -142,7 +162,7 @@ async function startGiveaway() {
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error: any) {
-    console.error('[GIVEAWAY] Error starting giveaway:', error);
+    console.error('[GIVEAWAY] CRITICAL Error starting giveaway:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to start giveaway' },
       { status: 500 }

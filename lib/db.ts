@@ -380,9 +380,22 @@ class Database {
   }
 
   createItemMessage(message: ItemMessage): void {
-    const messages = this.getItemMessages();
-    messages.push(message);
-    this.writeFile(this.itemMessagesFile, messages);
+    try {
+      if (!message || !message.id || !message.buyerId) {
+        throw new Error('Invalid message: missing required fields (id, buyerId)');
+      }
+      
+      const messages = this.getItemMessages();
+      console.log(`[DB] Adding message to ${messages.length} existing messages`);
+      
+      messages.push(message);
+      this.writeFile(this.itemMessagesFile, messages);
+      
+      console.log(`[DB] Message created successfully for user ${message.buyerId}`);
+    } catch (error: any) {
+      console.error('[DB] Error in createItemMessage:', error);
+      throw error;
+    }
   }
 
   markItemMessageAsRead(messageId: string): boolean {
@@ -646,10 +659,16 @@ class DatabaseWrapper {
 
   // ItemMessage methods
   async createItemMessage(message: ItemMessage): Promise<void> {
-    if (this.isAsync) {
-      return await this.backend.createItemMessage(message);
-    } else {
-      this.backend.createItemMessage(message);
+    try {
+      if (this.isAsync) {
+        return await this.backend.createItemMessage(message);
+      } else {
+        this.backend.createItemMessage(message);
+        return Promise.resolve();
+      }
+    } catch (error: any) {
+      console.error('[DB] Error creating item message:', error);
+      throw error;
     }
   }
 
