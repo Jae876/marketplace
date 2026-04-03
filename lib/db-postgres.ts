@@ -89,7 +89,7 @@ async function initializeTables() {
     await sql`
       CREATE TABLE IF NOT EXISTS transactions (
         id VARCHAR(255) PRIMARY KEY,
-        "productId" VARCHAR(255) NOT NULL,
+        "productId" VARCHAR(255),
         "buyerId" VARCHAR(255) NOT NULL,
         "sellerId" VARCHAR(255) NOT NULL,
         amount DECIMAL(18, 8) NOT NULL,

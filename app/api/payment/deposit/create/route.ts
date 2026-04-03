@@ -70,9 +70,10 @@ export async function POST(req: NextRequest) {
     // Create deposit transaction (NOT linked to a product, for balance deposits only)
     const depositId = `dep_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    await db.createTransaction({
+    // Deposit transactions don't reference a product - productId is null
+    const depositTxData: any = {
       id: depositId,
-      productId: 'deposit', // Special marker for direct deposits (not a product purchase)
+      productId: null,
       buyerId: decoded.userId,
       sellerId: 'system_deposit', // Mark as system deposit
       amount: amount,
@@ -80,7 +81,9 @@ export async function POST(req: NextRequest) {
       walletAddress: walletAddress,
       status: 'pending',
       createdAt: new Date().toISOString(),
-    });
+    };
+    
+    await db.createTransaction(depositTxData);
 
     return NextResponse.json({ 
       depositId,
