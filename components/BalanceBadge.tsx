@@ -224,16 +224,6 @@ export default function BalanceBadge({ balance, trustScore = 0, recentDeposits =
 
             {/* Modal Content - Scrollable */}
             <div className="flex-1 overflow-y-auto p-8 space-y-8">
-              {/* Add Funds Button - Prominent CTA */}
-              <div className="sticky top-0 z-10 -mx-8 px-8 pt-0 pb-4 bg-gradient-to-b from-slate-900 via-slate-900 to-transparent">
-                <button
-                  onClick={() => setShowAddFundsModal(true)}
-                  className="w-full py-3 rounded-lg font-medium text-sm bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg hover:shadow-green-500/20 transition-all border border-green-500/30 hover:border-green-400/50"
-                >
-                  + Add Funds
-                </button>
-              </div>
-
               {/* Main Balance Display */}
               <div className="relative">
                 <div className="text-slate-500 text-sm uppercase tracking-widest mb-3">Current Balance</div>
@@ -243,6 +233,14 @@ export default function BalanceBadge({ balance, trustScore = 0, recentDeposits =
                 <div className="h-px bg-gradient-to-r from-purple-500/50 via-purple-500/20 to-transparent w-32 mb-4" />
                 <p className="text-slate-400 text-sm">Available for future purchases</p>
               </div>
+
+              {/* Add Funds Button - Easy Access Below Balance */}
+              <button
+                onClick={() => setShowAddFundsModal(true)}
+                className="w-full py-3 rounded-lg font-medium text-sm bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg hover:shadow-green-500/20 transition-all border border-green-500/30 hover:border-green-400/50"
+              >
+                + Add Funds
+              </button>
 
               {/* Summary Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
