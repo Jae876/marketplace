@@ -490,7 +490,7 @@ class Database {
 
   getActiveGiveaway(): Giveaway | null {
     try {
-      const giveaway = this.readFile(this.giveawayFile, null);
+      const giveaway = this.readFile(this.giveawayFile, null) as Giveaway | null;
       if (!giveaway) return null;
 
       const started = new Date(giveaway.startedAt);

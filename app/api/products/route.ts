@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
         console.log('[PRODUCTS] Applying $' + activeGiveaway.discount + ' discount to eligible user');
         products = products.map((p: any) => ({
           ...p,
-          price: Math.max(0, parseFloat(p.price) - parseFloat(activeGiveaway.discount)),
+          price: Math.max(0, parseFloat(p.price) - activeGiveaway.discount),
           originalPrice: p.price,
           giveawayDiscount: activeGiveaway.discount,
           giveawayActive: true,
