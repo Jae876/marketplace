@@ -266,14 +266,14 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
 
             {/* Step 2: Amount Input */}
             {step === 'amount' && (
-              <div className="space-y-4 animate-fade-in">
-                {/* Back Button + Selected Crypto */}
-                <div className="flex items-center justify-between">
+              <div className="space-y-5 animate-fade-in">
+                {/* Back Button + Selected Crypto - More Spacing */}
+                <div className="pt-4 pb-2 flex items-center justify-between border-b border-slate-700/30">
                   <button
                     onClick={() => setStep('crypto')}
-                    className="text-xs text-slate-400 hover:text-slate-300 transition-colors flex items-center space-x-1"
+                    className="text-sm text-slate-300 hover:text-green-400 transition-colors flex items-center space-x-2 py-2 px-2 -ml-2 hover:bg-slate-800/30 rounded"
                   >
-                    <span>←</span>
+                    <span className="text-base">←</span>
                     <span>Change Crypto</span>
                   </button>
                   {selectedCrypto && (
@@ -285,7 +285,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                 </div>
 
                 {/* Amount Input */}
-                <div>
+                <div className="pt-4 space-y-3">
                   <label className="text-xs uppercase tracking-widest text-slate-400 block mb-2">
                     Amount (USD)
                   </label>
@@ -301,7 +301,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                       className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 pl-7 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/20 transition-all"
                     />
                   </div>
-                  <p className="text-xs text-slate-500 mt-2">Minimum deposit: $5 USD</p>
+                  <p className="text-xs text-slate-500">Minimum deposit: $5 USD</p>
                 </div>
 
                 {/* Real-time Conversion Display */}
@@ -328,18 +328,26 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                   </div>
                 )}
 
-                {/* Continue Button */}
-                <button
-                  onClick={handleCreateDeposit}
-                  disabled={loading || !amountUsd || parseFloat(amountUsd) < 5}
-                  className={`w-full py-3 rounded-lg font-medium text-sm transition-all duration-200 ${
-                    loading || !amountUsd || parseFloat(amountUsd) < 5
-                      ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg hover:shadow-green-500/20'
-                  }`}
-                >
-                  {loading ? 'Processing...' : 'Continue'}
-                </button>
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-4">
+                  <button
+                    onClick={onClose}
+                    className="px-4 py-3 rounded-lg font-medium text-sm bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-200 transition-all border border-slate-700/30"
+                  >
+                    ✕
+                  </button>
+                  <button
+                    onClick={handleCreateDeposit}
+                    disabled={loading || !amountUsd || parseFloat(amountUsd) < 5}
+                    className={`flex-1 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${
+                      loading || !amountUsd || parseFloat(amountUsd) < 5
+                        ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg hover:shadow-green-500/20'
+                    }`}
+                  >
+                    {loading ? 'Processing...' : 'Continue'}
+                  </button>
+                </div>
               </div>
             )}
 
