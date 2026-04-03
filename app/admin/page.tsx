@@ -24,7 +24,7 @@ interface WalletConfig {
 
 export default function AdminPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'products' | 'wallets' | 'orders'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'wallets' | 'orders' | 'giveaway'>('products');
   const [products, setProducts] = useState<Product[]>([]);
   const [wallets, setWallets] = useState<WalletConfig>(
     SUPPORTED_CRYPTOS.reduce((acc, crypto) => {
@@ -51,6 +51,10 @@ export default function AdminPage() {
   const [orderFilter, setOrderFilter] = useState<'all' | 'paid' | 'pending'>('all');
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [sendingItem, setSendingItem] = useState(false);
+
+  // Giveaway states
+  const [giveawayLoading, setGiveawayLoading] = useState(false);
+  const [giveawayMessage, setGiveawayMessage] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -180,6 +184,36 @@ export default function AdminPage() {
       setError('Failed to load orders');
     } finally {
       setLoadingOrders(false);
+    }
+  };
+
+  const handleStartGiveaway = async () => {
+    try {
+      setGiveawayLoading(true);
+      setGiveawayMessage('');
+      setError('');
+      setSuccess('');
+
+      const response = await fetch('/api/admin/giveaway', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'start' }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to start giveaway');
+        return;
+      }
+
+      setSuccess(`✓ Giveaway started! Notified ${data.count} eligible users with $10+ balance.`);
+      setGiveawayMessage(`Transaction ID: ${data.giveawayId}\n- Discount: $${data.discount}\n- Duration: ${data.duration} hours\n- Users Notified: ${data.count}`);
+    } catch (error: any) {
+      setError(error.message || 'Failed to start giveaway');
+    } finally {
+      setGiveawayLoading(false);
     }
   };
 
@@ -492,6 +526,16 @@ export default function AdminPage() {
               }`}
             >
               Order Management
+            </button>
+            <button
+              onClick={() => setActiveTab('giveaway')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'giveaway'
+                  ? 'border-purple-500 text-purple-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
+              }`}
+            >
+              🎁 Giveaway
             </button>
           </nav>
         </div>
@@ -979,6 +1023,93 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'giveaway' && (
+          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-2xl p-8 border border-purple-700/30">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-green-300 to-emerald-300 bg-clip-text text-transparent mb-2">
+                🎁 Launch Giveaway Campaign
+              </h2>
+              <p className="text-gray-400">Start a $10 discount giveaway for 24 hours - Only users with $10+ balance are eligible</p>
+            </div>
+
+            {/* Giveaway Info */}
+            <div className="grid grid-cols-3 gap-4 mb-8">
+              <div className="bg-slate-900/50 rounded-lg p-4 border border-emerald-600/30">
+                <p className="text-xs text-gray-500 font-semibold mb-2 uppercase">Discount Amount</p>
+                <p className="text-2xl font-bold text-emerald-400">$10</p>
+              </div>
+              <div className="bg-slate-900/50 rounded-lg p-4 border border-emerald-600/30">
+                <p className="text-xs text-gray-500 font-semibold mb-2 uppercase">Duration</p>
+                <p className="text-2xl font-bold text-emerald-400">24 Hours</p>
+              </div>
+              <div className="bg-slate-900/50 rounded-lg p-4 border border-emerald-600/30">
+                <p className="text-xs text-gray-500 font-semibold mb-2 uppercase">Eligibility</p>
+                <p className="text-2xl font-bold text-emerald-400">$10+ Balance</p>
+              </div>
+            </div>
+
+            {/* Giveaway Details */}
+            <div className="bg-slate-900/50 rounded-lg p-6 border border-emerald-600/30 mb-8">
+              <h3 className="text-lg font-semibold text-gray-200 mb-4">How It Works:</h3>
+              <ul className="space-y-3 text-gray-300 text-sm">
+                <li className="flex items-start">
+                  <span className="text-emerald-400 font-bold mr-3">1.</span>
+                  <span>Click "Launch Giveaway" to start the 24-hour promotion</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-emerald-400 font-bold mr-3">2.</span>
+                  <span>All eligible users (balance ≥ $10) receive notification in their inbox</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-emerald-400 font-bold mr-3">3.</span>
+                  <span>Users see $10 automatically deducted from all product prices during giveaway period</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-emerald-400 font-bold mr-3">4.</span>
+                  <span>Discount expires after 24 hours - prices return to normal</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Warning Box */}
+            <div className="bg-amber-900/20 border border-amber-600/40 rounded-lg p-6 mb-8">
+              <p className="text-amber-300 text-sm font-semibold">⚠️ Important:</p>
+              <p className="text-amber-200 text-sm mt-2">This action will broadcast a promotional message to all eligible users. The discount will apply automatically to all products for exactly 24 hours. This action cannot be undone until the 24-hour period expires.</p>
+            </div>
+
+            {error && (
+              <div className="bg-red-900/50 border border-red-600 text-red-200 px-4 py-3 rounded-lg mb-4">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-900/50 border border-green-600 text-green-200 px-4 py-3 rounded-lg mb-4">
+                {success}
+              </div>
+            )}
+
+            {giveawayMessage && (
+              <div className="bg-slate-900/80 border border-emerald-600/50 rounded-lg p-4 mb-6 font-mono text-xs text-gray-300 max-h-40 overflow-y-auto">
+                {giveawayMessage}
+              </div>
+            )}
+
+            {/* Launch Button */}
+            <button
+              onClick={handleStartGiveaway}
+              disabled={giveawayLoading}
+              className={`w-full py-4 rounded-lg font-bold text-white transition-all text-lg ${
+                giveawayLoading
+                  ? 'bg-gray-600 cursor-not-allowed opacity-60'
+                  : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 hover:shadow-lg hover:shadow-green-500/30'
+              }`}
+            >
+              {giveawayLoading ? '⏳ Starting Giveaway...' : '🎁 Launch 24-Hour Giveaway'}
+            </button>
           </div>
         )}
       </main>
