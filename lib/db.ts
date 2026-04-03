@@ -445,6 +445,22 @@ class Database {
   markReferralRewarded(referralId: string): void {
     // JSON database doesn't support referrals
   }
+
+  // Giveaway methods - stubs for JSON database (giveaways are PostgreSQL-only for production)
+  startGiveaway(id: string, discount: number, hours: number): void {
+    // JSON database doesn't support persistent giveaway state
+    console.log('Giveaway feature only available with PostgreSQL database');
+  }
+
+  getActiveGiveaway(): any | null {
+    // JSON database doesn't support giveaway state
+    return null;
+  }
+
+  endGiveaway(id: string): void {
+    // JSON database doesn't support giveaway state
+    console.log('Giveaway feature only available with PostgreSQL database');
+  }
 }
 
 // Lazy load PostgreSQL adapter
@@ -846,6 +862,31 @@ class DatabaseWrapper {
       return await this.backend.markReferralRewarded(referralId);
     } else {
       this.backend.markReferralRewarded(referralId);
+    }
+  }
+
+  // Giveaway methods
+  async startGiveaway(id: string, discount: number, hours: number): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.startGiveaway(id, discount, hours);
+    } else {
+      this.backend.startGiveaway(id, discount, hours);
+    }
+  }
+
+  async getActiveGiveaway(): Promise<any | null> {
+    if (this.isAsync) {
+      return await this.backend.getActiveGiveaway();
+    } else {
+      return this.backend.getActiveGiveaway();
+    }
+  }
+
+  async endGiveaway(id: string): Promise<void> {
+    if (this.isAsync) {
+      return await this.backend.endGiveaway(id);
+    } else {
+      this.backend.endGiveaway(id);
     }
   }
 }
