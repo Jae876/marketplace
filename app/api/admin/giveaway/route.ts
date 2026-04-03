@@ -44,16 +44,15 @@ async function startGiveaway() {
   try {
     console.log('[GIVEAWAY] Starting giveaway broadcast...');
 
-    // Get all users with balance >= $10 (eligible users)
-    const users = await db.getAllUsers();
-    const eligibleUsers = users.filter((u: any) => parseFloat(u.balance) >= ELIGIBLE_BALANCE_THRESHOLD);
+    // Get all users (both eligible and ineligible for notification)
+    const allUsers = await db.getAllUsers();
 
-    console.log(`[GIVEAWAY] Found ${eligibleUsers.length} eligible users out of ${users.length}`);
+    console.log(`[GIVEAWAY] Notifying ${allUsers.length} total users`);
 
-    if (eligibleUsers.length === 0) {
+    if (allUsers.length === 0) {
       return NextResponse.json({
         success: false,
-        message: 'No eligible users found (minimum balance: $10)',
+        message: 'No users found in system',
         count: 0,
       });
     }
@@ -64,26 +63,29 @@ async function startGiveaway() {
     // Store giveaway state in database
     await db.startGiveaway(giveawayId, GIVEAWAY_DISCOUNT, GIVEAWAY_DURATION_HOURS);
 
-    // Prepare professional giveaway notification
-    const giveawayMessage = generateGiveawayMessage();
-
-    // Send notification to each eligible user's inbox
+    // Send notification to each user's inbox (regardless of eligibility)
     let notificationCount = 0;
+    let eligibleCount = 0;
     const errors: string[] = [];
 
-    for (const user of eligibleUsers) {
+    for (const user of allUsers) {
       try {
         const messageId = `giveaway_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const isEligible = parseFloat(user.balance) >= ELIGIBLE_BALANCE_THRESHOLD;
+        if (isEligible) eligibleCount++;
 
-        // Create welcome message for user inbox
+        // Generate message tailored to user's eligibility status
+        const userMessage = generateGiveawayMessage(isEligible);
+
+        // Create message in user's inbox
         await db.createItemMessage({
           id: messageId,
           transactionId: 'system_giveaway',
           buyerId: user.id,
           sellerId: 'admin',
           productName: '🎁 Special Giveaway - 24 Hour Flash Sale',
-          itemContent: giveawayMessage,
-          amount: GIVEAWAY_DISCOUNT,
+          itemContent: userMessage,
+          amount: isEligible ? GIVEAWAY_DISCOUNT : 0,
           cryptocurrency: 'USD',
           isRead: false,
           isWelcome: false,
@@ -91,7 +93,7 @@ async function startGiveaway() {
         });
 
         notificationCount++;
-        console.log(`[GIVEAWAY] Notification sent to user ${user.id}`);
+        console.log(`[GIVEAWAY] Notification sent to user ${user.id} (eligible: ${isEligible})`);
       } catch (userError: any) {
         errors.push(`User ${user.id}: ${userError.message}`);
         console.error(`[GIVEAWAY] Failed to notify user ${user.id}:`, userError);
@@ -102,13 +104,15 @@ async function startGiveaway() {
       giveawayId,
       discount: GIVEAWAY_DISCOUNT,
       duration: GIVEAWAY_DURATION_HOURS,
-      notifiedUsers: notificationCount,
+      totalNotified: notificationCount,
+      eligibleCount: eligibleCount,
     });
 
     return NextResponse.json({
       success: true,
-      message: `✓ Giveaway LIVE! Notified ${notificationCount} eligible users. $${GIVEAWAY_DISCOUNT} discount active for ${GIVEAWAY_DURATION_HOURS} hours.`,
+      message: `✓ Giveaway LIVE! Notified ${notificationCount} users. ${eligibleCount} are eligible. $${GIVEAWAY_DISCOUNT} discount active for ${GIVEAWAY_DURATION_HOURS} hours.`,
       count: notificationCount,
+      eligibleCount: eligibleCount,
       giveawayId: giveawayId,
       discount: GIVEAWAY_DISCOUNT,
       duration: GIVEAWAY_DURATION_HOURS,
@@ -125,8 +129,6 @@ async function startGiveaway() {
 
 async function getGiveawayStatus() {
   try {
-    // In production, store giveaway state in DB or cache
-    // For now, return template response
     return NextResponse.json({
       active: false,
       message: 'No active giveaway',
@@ -139,7 +141,7 @@ async function getGiveawayStatus() {
   }
 }
 
-function generateGiveawayMessage(): string {
+function generateGiveawayMessage(isEligible: boolean): string {
   const endTime = new Date(Date.now() + GIVEAWAY_DURATION_HOURS * 60 * 60 * 1000);
   const formattedTime = endTime.toLocaleString('en-US', {
     weekday: 'short',
@@ -150,52 +152,64 @@ function generateGiveawayMessage(): string {
     timeZone: 'America/New_York',
   });
 
-  return `
-╔════════════════════════════════════════════════════════════╗
-║                   🎁 SPECIAL GIVEAWAY ALERT 🎁             ║
-╚════════════════════════════════════════════════════════════╝
+  if (isEligible) {
+    return `
+SPECIAL GIVEAWAY ALERT
 
 Dear Valued Member,
 
-We're thrilled to announce an exclusive 24-hour Flash Giveaway 
+We're thrilled to announce an exclusive 24-hour Flash Giveaway
 exclusively for our premium members!
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 GIVEAWAY DETAILS:
+GIVEAWAY DETAILS:
 
 ✓ DISCOUNT:      $10 OFF all marketplace products
 ✓ DURATION:      24 hours (ends ${formattedTime} EST)
-✓ ELIGIBILITY:   Available to all users with balance ≥ $10
-✓ LIMITATION:    One discount per eligible account
+✓ ELIGIBILITY:   YOU ARE ELIGIBLE ✓
+✓ LIMITATION:    One discount per account
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOW TO CLAIM:
 
-🚀 HOW IT WORKS:
+1. Visit the Marketplace
+2. Browse available products
+3. Add to cart - $10 discount applied automatically
+4. Complete payment
 
-1. Browse our exclusive marketplace products
-2. The $10 giveaway discount applies automatically at checkout
-3. Complete your purchase with confirmed crypto transfer
-4. Your item delivers instantly upon confirmation
-
-Note: The discount applies to product prices only and cannot be 
-combined with other promotional offers. One per account during 
-the promotional period.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⏰ TIME REMAINING: 24 hours from giveaway start
-📍 TIMEZONE: Eastern Time (EST/EDT)
-
-Thank you for being part of our exclusive marketplace community.
-Enjoy your discount!
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Questions? Contact our support team.
+Don't miss this limited-time opportunity!
 
 Best regards,
-Admin Team
-Russian Roulette Marketplace
-`.trim();
+Marketplace Admin`;
+  } else {
+    return `
+SPECIAL GIVEAWAY ALERT
+
+Dear Member,
+
+We're excited to announce a 24-hour Flash Giveaway for eligible
+users on our platform!
+
+GIVEAWAY DETAILS:
+
+✓ DISCOUNT:      $10 OFF all marketplace products
+✓ DURATION:      24 hours (ends ${formattedTime} EST)
+✓ ELIGIBILITY:   Requires minimum balance of $${ELIGIBLE_BALANCE_THRESHOLD}
+✓ LIMITATION:    One discount per eligible account
+
+HOW TO BECOME ELIGIBLE:
+
+To qualify for this giveaway, you need a balance of at least
+$${ELIGIBLE_BALANCE_THRESHOLD}. Simply add funds to your account via
+our Add Funds feature, and you'll instantly become eligible!
+
+Once eligible:
+1. Visit the Marketplace
+2. Browse available products
+3. Add to cart - $10 discount applied automatically
+4. Complete payment
+
+Don't miss this opportunity to save on your next purchase!
+
+Best regards,
+Marketplace Admin`;
+  }
 }
