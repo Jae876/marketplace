@@ -406,34 +406,37 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-100 via-purple-950 to-dark-200">
-      <nav className="bg-dark-200/80 backdrop-blur-sm border-b border-purple-800/50 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-20">
-            <div className="flex items-center">
-              <Link href="/" className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Russian Roulette
+      <nav className="bg-dark-200/80 backdrop-blur-sm border-b border-purple-800/50 shadow-lg sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16 sm:h-20">
+            <div className="flex items-center min-w-0">
+              <Link href="/" className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent truncate">
+                RR
               </Link>
+              <span className="hidden sm:inline ml-2 text-xs sm:text-sm text-gray-400">Roulette</span>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-1 sm:space-x-3 md:space-x-4">
               {/* Message Center - Shows notifications and welcome modal */}
-              {user && <MessageCenter />}
+              {user && <div className="hidden sm:block"><MessageCenter /></div>}
               {/* Balance Badge - Transparency Indicator */}
               {user && (
-                <BalanceBadge 
-                  balance={user.balance || 0} 
-                  trustScore={user.trustScore || 0}
-                  recentDeposits={user.recentDeposits || 0}
-                />
+                <div className="hidden md:block">
+                  <BalanceBadge 
+                    balance={user.balance || 0} 
+                    trustScore={user.trustScore || 0}
+                    recentDeposits={user.recentDeposits || 0}
+                  />
+                </div>
               )}
               <Link
                 href="/"
-                className="text-gray-300 hover:text-purple-400 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                className="text-gray-300 hover:text-purple-400 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors"
               >
-                Marketplace
+                Market
               </Link>
               <button
                 onClick={handleLogout}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-2 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors"
               >
                 Logout
               </button>
@@ -442,22 +445,22 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-100 mb-2">Dashboard</h1>
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-responsive-title text-gray-100 mb-1 sm:mb-2">Dashboard</h1>
           {user && (
-            <p className="text-gray-400">
-              Welcome back, {user.firstName} {user.lastName} (@{user.username})
+            <p className="text-responsive-subtitle text-gray-400 truncate">
+              Welcome back, {user.firstName} (@{user.username})
             </p>
           )}
         </div>
 
         {/* Tabs */}
-        <div className="mb-6 border-b border-purple-800/30">
-          <nav className="-mb-px flex space-x-8">
+        <div className="mb-6 border-b border-purple-800/30 overflow-x-auto">
+          <nav className="-mb-px flex space-x-2 sm:space-x-4 md:space-x-8 min-w-max sm:min-w-0">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === 'overview'
                   ? 'border-purple-500 text-purple-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
@@ -467,17 +470,17 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('products')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === 'products'
                   ? 'border-purple-500 text-purple-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
               }`}
             >
-              Browse Products
+              Products
             </button>
             <button
               onClick={() => setActiveTab('profile')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === 'profile'
                   ? 'border-purple-500 text-purple-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
@@ -487,20 +490,20 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('inbox')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === 'inbox'
                   ? 'border-purple-500 text-purple-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
               }`}
             >
-              📬 Inbox
+              📬
             </button>
           </nav>
         </div>
 
         {activeTab === 'overview' && (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid-responsive-3 mb-6 sm:mb-8">
               {/* Total Transactions */}
               <button
                 onClick={() => {
@@ -825,11 +828,11 @@ export default function DashboardPage() {
               </div>
 
               {products.length === 0 ? (
-                <div className="bg-dark-200/80 backdrop-blur-sm rounded-xl p-12 text-center border border-purple-800/30">
-                  <p className="text-gray-400 text-lg">No products available yet</p>
+                <div className="bg-dark-200/80 backdrop-blur-sm rounded-xl p-8 sm:p-12 text-center border border-purple-800/30">
+                  <p className="text-gray-400 text-base sm:text-lg">No products available yet</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid-responsive-3">
                   {products.slice(0, 6).map((product) => (
                     <Link
                       key={product.id}
@@ -838,19 +841,19 @@ export default function DashboardPage() {
                     >
                       <div className="aspect-square bg-gradient-to-br from-purple-900/40 to-pink-900/40 flex items-center justify-center overflow-hidden">
                         <div className="text-center">
-                          <div className="text-4xl mb-2">📦</div>
+                          <div className="text-3xl sm:text-4xl mb-2">📦</div>
                           <p className="text-xs text-gray-400">{product.region}</p>
                         </div>
                       </div>
-                      <div className="p-4">
-                        <h3 className="font-semibold text-gray-100 group-hover:text-purple-300 transition-colors line-clamp-2">
+                      <div className="p-3 sm:p-4">
+                        <h3 className="font-semibold text-sm sm:text-base text-gray-100 group-hover:text-purple-300 transition-colors line-clamp-2">
                           {product.name}
                         </h3>
-                        <p className="text-sm text-gray-400 mt-2 line-clamp-2">{product.description}</p>
+                        <p className="text-xs sm:text-sm text-gray-400 mt-2 line-clamp-2">{product.description}</p>
                         <div className="flex items-end justify-between mt-4">
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Price</p>
-                            <p className="text-lg font-bold text-purple-400">${product.price.toFixed(2)}</p>
+                            <p className="text-base sm:text-lg font-bold text-purple-400">${product.price.toFixed(2)}</p>
                           </div>
                           <div className="text-xs bg-purple-900/50 px-3 py-1 rounded text-purple-300">
                             {product.type}
@@ -940,7 +943,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid-responsive-3">
                 {filteredProducts.map((product) => (
                   <Link
                     key={product.id}
@@ -951,18 +954,18 @@ export default function DashboardPage() {
                       <img
                         src={product.image}
                         alt={product.name}
-                        className="w-full h-48 object-cover"
+                        className="w-full h-40 sm:h-48 object-cover"
                       />
                     )}
-                    <div className="p-6">
-                      <h3 className="text-xl font-semibold text-gray-100 mb-2">
+                    <div className="p-4 sm:p-6">
+                      <h3 className="text-base sm:text-xl font-semibold text-gray-100 mb-2">
                         {product.name}
                       </h3>
-                      <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                      <p className="text-gray-400 text-xs sm:text-sm mb-4 line-clamp-2">
                         {product.description}
                       </p>
                       <div className="flex justify-between items-center">
-                        <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                           ${product.price.toFixed(2)}
                         </span>
                         <div className="text-sm">
@@ -1131,29 +1134,29 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Referral Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-dark-200/50 rounded-lg p-4 border border-purple-600/30">
-                    <p className="text-gray-400 text-sm mb-1">Total Referred</p>
-                    <p className="text-2xl font-bold text-purple-400">{referralInfo.totalReferred || 0}</p>
+                <div className="grid-responsive-4">
+                  <div className="bg-dark-200/50 rounded-lg p-3 sm:p-4 border border-purple-600/30">
+                    <p className="text-gray-400 text-xs sm:text-sm mb-1">Total Referred</p>
+                    <p className="text-xl sm:text-2xl font-bold text-purple-400">{referralInfo.totalReferred || 0}</p>
                   </div>
-                  <div className="bg-dark-200/50 rounded-lg p-4 border border-purple-600/30">
-                    <p className="text-gray-400 text-sm mb-1">Qualified ($10+)</p>
-                    <p className="text-2xl font-bold text-pink-400">{referralInfo.totalQualified || 0}</p>
+                  <div className="bg-dark-200/50 rounded-lg p-3 sm:p-4 border border-purple-600/30">
+                    <p className="text-gray-400 text-xs sm:text-sm mb-1">Qualified ($10+)</p>
+                    <p className="text-xl sm:text-2xl font-bold text-pink-400">{referralInfo.totalQualified || 0}</p>
                   </div>
-                  <div className="bg-dark-200/50 rounded-lg p-4 border border-purple-600/30">
-                    <p className="text-gray-400 text-sm mb-1">Earned</p>
-                    <p className="text-2xl font-bold text-green-400">${(referralInfo.totalRewardsEarned || 0).toFixed(2)}</p>
+                  <div className="bg-dark-200/50 rounded-lg p-3 sm:p-4 border border-purple-600/30">
+                    <p className="text-gray-400 text-xs sm:text-sm mb-1">Earned</p>
+                    <p className="text-xl sm:text-2xl font-bold text-green-400">${(referralInfo.totalRewardsEarned || 0).toFixed(2)}</p>
                   </div>
-                  <div className="bg-dark-200/50 rounded-lg p-4 border border-purple-600/30">
-                    <p className="text-gray-400 text-sm mb-1">Pending</p>
-                    <p className="text-2xl font-bold text-yellow-400">${(referralInfo.totalRewardsPending || 0).toFixed(2)}</p>
+                  <div className="bg-dark-200/50 rounded-lg p-3 sm:p-4 border border-purple-600/30">
+                    <p className="text-gray-400 text-xs sm:text-sm mb-1">Pending</p>
+                    <p className="text-xl sm:text-2xl font-bold text-yellow-400">${(referralInfo.totalRewardsPending || 0).toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* Referred Users List */}
                 {referralInfo.referrals && referralInfo.referrals.length > 0 ? (
-                  <div className="bg-dark-200/50 rounded-lg p-6 border border-purple-600/30">
-                    <h4 className="text-lg font-semibold text-gray-100 mb-4">People You've Referred</h4>
+                  <div className="bg-dark-200/50 rounded-lg p-4 sm:p-6 border border-purple-600/30">
+                    <h4 className="text-base sm:text-lg font-semibold text-gray-100 mb-4">People You've Referred</h4>
                     <div className="space-y-3 max-h-96 overflow-y-auto">
                       {referralInfo.referrals.map((referral: any) => (
                         <div key={referral.refereeId} className="flex items-center justify-between bg-dark-100 p-4 rounded-lg border border-gray-700/30">
