@@ -241,7 +241,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                 onClick={onClose}
                 className="text-slate-500 hover:text-slate-300 text-2xl w-8 h-8 rounded-full hover:bg-slate-800/50 transition-all flex items-center justify-center"
               >
-                Γ£ò
+                ✕
               </button>
             </div>
             <p className="text-xs text-slate-400 mt-2">Deposit cryptocurrency to increase your balance</p>
@@ -408,7 +408,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                 {/* Success Display */}
                 {confirmationStatus === 'success' && (
                   <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 animate-pulse">
-                    <p className="text-xs text-green-400">Γ£ô Deposit confirmed! Your balance will update shortly.</p>
+                    <p className="text-xs text-green-400">✓ Deposit confirmed! Your balance will update shortly.</p>
                   </div>
                 )}
 
@@ -432,7 +432,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                         : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg hover:shadow-green-500/20'
                     }`}
                   >
-                    {confirming ? 'Confirming...' : confirmationStatus === 'success' ? 'Γ£ô Confirmed' : 'Confirm Deposit'}
+                    {confirming ? 'Confirming...' : confirmationStatus === 'success' ? '✓ Confirmed' : 'Confirm Deposit'}
                   </button>
                 </div>
               </div>
