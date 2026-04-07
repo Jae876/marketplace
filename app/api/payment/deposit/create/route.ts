@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { cryptocurrency, amountUsd } = await req.json();
+    const { cryptocurrency, amountUsd, network } = await req.json();
 
     if (!cryptocurrency || !amountUsd) {
       return NextResponse.json(
@@ -52,13 +52,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get admin wallet for the selected cryptocurrency
+    // Get admin wallet for the selected cryptocurrency and network
     const walletConfig = await db.getWalletConfig();
-    const walletAddress = walletConfig[cryptocurrency as keyof typeof walletConfig];
+    
+    // If network is specified, look for network-specific config first (e.g., "usdt_ethereum")
+    let walletAddress = '';
+    if (network) {
+      const keyWithNetwork = `${cryptocurrency}_${network}`;
+      walletAddress = walletConfig[keyWithNetwork as keyof typeof walletConfig] || '';
+    }
+    
+    // Fall back to non-network key if not found or no network specified
+    if (!walletAddress) {
+      walletAddress = walletConfig[cryptocurrency as keyof typeof walletConfig] || '';
+    }
     
     if (!walletAddress) {
       return NextResponse.json(
-        { error: `Wallet address not configured for ${cryptocurrency}. Please contact admin.` },
+        { error: `Wallet address not configured for ${cryptocurrency}${network ? ` on ${network}` : ''}. Please contact admin.` },
         { status: 400 }
       );
     }
@@ -89,6 +100,7 @@ export async function POST(req: NextRequest) {
       cryptoAmount: cryptoAmount,
       cryptoSymbol: cryptoInfo?.symbol || cryptocurrency.toUpperCase(),
       cryptocurrency,
+      network: network || 'default',
     }, {
       headers: {
         'Content-Type': 'application/json',

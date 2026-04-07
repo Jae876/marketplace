@@ -17,14 +17,23 @@ interface CryptoOption {
   color: string;
 }
 
+interface NetworkOption {
+  network: string;
+  address: string;
+  isConfigured: boolean;
+}
+
 export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: AddFundModalProps) {
-  const [step, setStep] = useState<'crypto' | 'amount' | 'confirm'>('crypto');
+  const [step, setStep] = useState<'crypto' | 'network' | 'amount' | 'confirm'>('crypto');
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoOption | null>(null);
+  const [selectedNetwork, setSelectedNetwork] = useState<NetworkOption | null>(null);
+  const [availableNetworks, setAvailableNetworks] = useState<NetworkOption[]>([]);
   const [amountUsd, setAmountUsd] = useState('');
   const [cryptoAmount, setCryptoAmount] = useState('0');
   const [walletAddress, setWalletAddress] = useState('');
   const [depositId, setDepositId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingNetworks, setLoadingNetworks] = useState(false);
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [confirmationStatus, setConfirmationStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
@@ -42,6 +51,8 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
       setTimeout(() => {
         setStep('crypto');
         setSelectedCrypto(null);
+        setSelectedNetwork(null);
+        setAvailableNetworks([]);
         setAmountUsd('');
         setCryptoAmount('0');
         setWalletAddress('');
@@ -52,6 +63,39 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
     }
   }, [isOpen]);
 
+  // Fetch available networks when crypto is selected
+  const fetchNetworks = async (cryptoId: string) => {
+    setLoadingNetworks(true);
+    setError('');
+    
+    try {
+      const response = await fetch(`/api/payment/networks?crypto=${cryptoId}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setError(data.error || 'Failed to load network options');
+        setLoadingNetworks(false);
+        return;
+      }
+      
+      setAvailableNetworks(data.networks);
+      
+      // Auto-select first network if only one available
+      if (data.networks.length === 1) {
+        setSelectedNetwork(data.networks[0]);
+        setStep('amount');
+      } else if (data.networks.length > 1) {
+        setStep('network');
+      } else {
+        setError('No networks configured for this cryptocurrency');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load networks');
+    } finally {
+      setLoadingNetworks(false);
+    }
+  };
+
   // Handle crypto selection
   const handleCryptoSelect = (crypto: CryptoOption) => {
     setSelectedCrypto(crypto);
@@ -59,7 +103,9 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
     setCryptoAmount('0');
     setWalletAddress('');
     setError('');
-    setStep('amount');
+    
+    // Fetch networks for this crypto
+    fetchNetworks(crypto.id);
   };
 
   // Simulate crypto price lookup - in production, use real API
@@ -135,6 +181,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
         body: JSON.stringify({
           cryptocurrency: selectedCrypto.id,
           amountUsd: usdAmount,
+          network: selectedNetwork?.network,
         }),
       });
 
@@ -264,10 +311,10 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
               </div>
             )}
 
-            {/* Step 2: Amount Input */}
-            {step === 'amount' && (
+            {/* Step 2: Network Selection */}
+            {step === 'network' && (
               <div className="space-y-5 animate-fade-in">
-                {/* Back Button + Selected Crypto - More Spacing */}
+                {/* Back Button + Selected Crypto */}
                 <div className="pt-4 pb-2 flex items-center justify-between border-b border-slate-700/30">
                   <button
                     onClick={() => setStep('crypto')}
@@ -282,6 +329,90 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                       <span className="text-sm font-medium text-slate-200">{selectedCrypto.symbol}</span>
                     </div>
                   )}
+                </div>
+
+                {/* Network Selection */}
+                <div className="pt-4 space-y-3">
+                  <label className="text-xs uppercase tracking-widest text-slate-400 block mb-2">
+                    Select Network
+                  </label>
+                  <div className="space-y-2">
+                    {loadingNetworks ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="text-slate-400">Loading networks...</div>
+                      </div>
+                    ) : availableNetworks.length > 0 ? (
+                      availableNetworks.map((net) => (
+                        <button
+                          key={net.network}
+                          onClick={() => {
+                            setSelectedNetwork(net);
+                            setStep('amount');
+                          }}
+                          className={`w-full p-4 rounded-lg border transition-all text-left ${
+                            selectedNetwork?.network === net.network
+                              ? 'bg-green-500/10 border-green-500/50'
+                              : 'bg-slate-800/50 border-slate-700/50 hover:border-slate-600/50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-200 capitalize">{net.network}</span>
+                            <div className="flex items-center space-x-2">
+                              {net.isConfigured && (
+                                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
+                                  Configured
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                        <p className="text-xs text-red-400">{error || 'No networks available'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-4">
+                  <button
+                    onClick={() => setStep('crypto')}
+                    className="px-4 py-3 rounded-lg font-medium text-sm bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-200 transition-all border border-slate-700/30"
+                  >
+                    Back
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Amount Input */}
+            {step === 'amount' && (
+              <div className="space-y-5 animate-fade-in">
+                {/* Back Button + Selected Crypto - More Spacing */}
+                <div className="pt-4 pb-2 flex items-center justify-between border-b border-slate-700/30">
+                  <button
+                    onClick={() => availableNetworks.length > 1 ? setStep('network') : setStep('crypto')}
+                    className="text-sm text-slate-300 hover:text-green-400 transition-colors flex items-center space-x-2 py-2 px-2 -ml-2 hover:bg-slate-800/30 rounded"
+                  >
+                    <span className="text-base">←</span>
+                    <span>{availableNetworks.length > 1 ? 'Change Network' : 'Change Crypto'}</span>
+                  </button>
+                  <div className="flex items-center space-x-3">
+                    {selectedCrypto && (
+                      <div className="flex items-center space-x-2 bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-700/30">
+                        <span className="text-xl">{selectedCrypto.icon}</span>
+                        <span className="text-sm font-medium text-slate-200">{selectedCrypto.symbol}</span>
+                      </div>
+                    )}
+                    {selectedNetwork && availableNetworks.length > 1 && (
+                      <div className="flex items-center space-x-2 bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-700/30">
+                        <span className="text-sm text-slate-400">on</span>
+                        <span className="text-sm font-medium text-slate-200 capitalize">{selectedNetwork.network}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Amount Input */}
@@ -351,7 +482,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
               </div>
             )}
 
-            {/* Step 3: Confirmation & Deposit Address */}
+            {/* Step 4: Confirmation & Deposit Address */}
             {step === 'confirm' && (
               <div className="space-y-4 animate-fade-in">
                 {/* Summary */}
@@ -363,6 +494,15 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                       <span className="text-sm font-medium text-slate-200">{selectedCrypto?.symbol}</span>
                     </div>
                   </div>
+                  {selectedNetwork && availableNetworks.length > 1 && (
+                    <>
+                      <div className="h-px bg-slate-700/30" />
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Network</span>
+                        <span className="text-sm font-medium text-slate-200 capitalize">{selectedNetwork.network}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="h-px bg-slate-700/30" />
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-400">Amount (USD)</span>
