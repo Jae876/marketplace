@@ -172,38 +172,6 @@ async function initializeTables() {
     `;
     console.log('[NEON] ✓ wallet_config table created/exists');
 
-    // Seed wallet config if empty - restore all configured wallets
-    try {
-      const defaultConfig = {
-        ethereum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        bitcoin: '',
-        usdt: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdt_ethereum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdt_tron: 'TUhXXVu4W3dJmqCqeqXzPKNn8fF2kEKW7K',
-        usdt_polygon: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdt_bsc: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdc: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdc_ethereum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdc_polygon: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdc_arbitrum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdc_optimism: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        dai: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        dai_ethereum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        dai_polygon: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        busd: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        busd_ethereum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        busd_bsc: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-      };
-
-      const existing = await sql`SELECT config FROM wallet_config LIMIT 1`;
-      if ((existing as any[]).length === 0) {
-        await sql`INSERT INTO wallet_config (config) VALUES (${JSON.stringify(defaultConfig)})`;
-        console.log('[NEON] ✓ wallet_config seeded with wallets');
-      }
-    } catch (seedError: any) {
-      console.log('[NEON] Wallet config seed error:', seedError.message);
-    }
-
     // Create giveaway_state table
     await sql`
       CREATE TABLE IF NOT EXISTS giveaway_state (
