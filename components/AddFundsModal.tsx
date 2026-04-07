@@ -17,23 +17,23 @@ interface CryptoOption {
   color: string;
 }
 
-interface NetworkOption {
-  network: string;
-  address: string;
-  isConfigured: boolean;
-}
+// Cryptocurrencies with multiple network support
+const MULTI_NETWORK_CRYPTOS: Record<string, string[]> = {
+  usdt: ['ethereum', 'tron', 'polygon', 'bsc'],
+  usdc: ['ethereum', 'polygon', 'arbitrum', 'optimism'],
+  dai: ['ethereum', 'polygon'],
+  busd: ['ethereum', 'bsc'],
+};
 
 export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: AddFundModalProps) {
   const [step, setStep] = useState<'crypto' | 'amount' | 'confirm'>('crypto');
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoOption | null>(null);
-  const [selectedNetwork, setSelectedNetwork] = useState<NetworkOption | null>(null);
-  const [availableNetworks, setAvailableNetworks] = useState<NetworkOption[]>([]);
+  const [selectedNetwork, setSelectedNetwork] = useState<string>('');
   const [amountUsd, setAmountUsd] = useState('');
   const [cryptoAmount, setCryptoAmount] = useState('0');
   const [walletAddress, setWalletAddress] = useState('');
   const [depositId, setDepositId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [loadingNetworks, setLoadingNetworks] = useState(false);
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [confirmationStatus, setConfirmationStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
@@ -51,59 +51,41 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
       setTimeout(() => {
         setStep('crypto');
         setSelectedCrypto(null);
-        setSelectedNetwork(null);
-        setAvailableNetworks([]);
+        setSelectedNetwork('');
         setAmountUsd('');
         setCryptoAmount('0');
         setWalletAddress('');
         setDepositId('');
         setError('');
         setConfirmationStatus('idle');
-        setLoadingNetworks(false);
       }, 300);
     }
   }, [isOpen]);
 
-  // Fetch available networks when crypto is selected
-  const fetchNetworks = async (cryptoId: string) => {
-    setLoadingNetworks(true);
-    setError('');
-    
-    try {
-      const response = await fetch(`/api/payment/networks?crypto=${cryptoId}`);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        setError(data.error || 'Failed to load network options');
-        setLoadingNetworks(false);
-        return;
-      }
-      
-      setAvailableNetworks(data.networks);
-      
-      // Auto-select first network if only one available
-      if (data.networks.length === 1) {
-        setSelectedNetwork(data.networks[0]);
-      }
-      
-      setLoadingNetworks(false);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load networks');
-      setLoadingNetworks(false);
-    }
-  };
-
   // Handle crypto selection
   const handleCryptoSelect = (crypto: CryptoOption) => {
     setSelectedCrypto(crypto);
-    setSelectedNetwork(null);
     setAmountUsd('');
     setCryptoAmount('0');
     setWalletAddress('');
     setError('');
     
-    // Fetch networks for this crypto
-    fetchNetworks(crypto.id);
+    // For multi-network cryptos, keep on crypto step to select network
+    // For single-network cryptos, auto-advance to amount step
+    const networks = MULTI_NETWORK_CRYPTOS[crypto.id.toLowerCase()];
+    if (networks && networks.length > 0) {
+      // Multi-network: user needs to select network
+      setSelectedNetwork('');
+    } else {
+      // Single network: auto-advance to amount after brief delay for UX
+      setTimeout(() => setStep('amount'), 200);
+      setSelectedNetwork('');
+    }
+  };
+
+  // Move to amount step after network selection
+  const handleContinueToAmount = () => {
+    setStep('amount');
   };
 
   // Simulate crypto price lookup - in production, use real API
@@ -129,6 +111,11 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
       monero: 180,
     };
     return rates[cryptocurrency.toLowerCase()] || 1;
+  };
+
+  // Check if crypto has multiple networks
+  const getNetworksForCrypto = (cryptoId: string): string[] => {
+    return MULTI_NETWORK_CRYPTOS[cryptoId.toLowerCase()] || [];
   };
 
   // Update crypto amount in real time
@@ -170,6 +157,11 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
 
     try {
       const token = localStorage.getItem('token');
+      
+      // Get the network to pass (for multi-network cryptos) or undefined
+      const networks = getNetworksForCrypto(selectedCrypto.id);
+      const networkParam = networks.length > 0 ? selectedNetwork : undefined;
+      
       const response = await fetch('/api/payment/deposit/create', {
         method: 'POST',
         headers: {
@@ -179,7 +171,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
         body: JSON.stringify({
           cryptocurrency: selectedCrypto.id,
           amountUsd: usdAmount,
-          network: selectedNetwork?.network,
+          network: networkParam,
         }),
       });
 
@@ -294,7 +286,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
 
           {/* Content */}
           <div className="p-6 space-y-6">
-            {/* Step 1: Crypto Selection */}
+            {/* Step 1: Crypto Selection - with inline network selection for multi-network cryptos */}
             {step === 'crypto' && (
               <div className="space-y-4 animate-fade-in">
                 {/* Crypto Dropdown */}
@@ -308,71 +300,69 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                   />
                 </div>
 
-                {/* Network Dropdown - Shows after crypto selection */}
+                {/* Network Selection - Only shows for multi-network cryptos */}
                 {selectedCrypto && (
                   <div className="animate-fade-in">
-                    <label className="text-xs uppercase tracking-widest text-slate-400 block mb-3">
-                      Select Network
-                    </label>
-                    
-                    {loadingNetworks ? (
-                      <div className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-slate-500 text-sm">
-                        Loading networks...
-                      </div>
-                    ) : error && availableNetworks.length === 0 ? (
-                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                        <p className="text-xs text-red-400">{error}</p>
-                      </div>
-                    ) : availableNetworks.length > 0 ? (
-                      <div className="space-y-2">
-                        {availableNetworks.length === 1 ? (
-                          // Single network - show as badge/selected state  
-                          <>
+                    {(() => {
+                      const networks = getNetworksForCrypto(selectedCrypto.id);
+                      
+                      if (networks.length === 0) {
+                        // Single network crypto - show continue button
+                        return (
+                          <button
+                            onClick={handleContinueToAmount}
+                            className="w-full py-3 rounded-lg font-medium text-sm bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg hover:shadow-green-500/20 transition-all"
+                          >
+                            Continue to Amount
+                          </button>
+                        );
+                      } else if (networks.length === 1) {
+                        // Single network option (e.g., Bitcoin mainnet)
+                        setSelectedNetwork(networks[0]);
+                        return (
+                          <div className="space-y-3">
+                            <label className="text-xs uppercase tracking-widest text-slate-400 block">
+                              Network
+                            </label>
                             <div className="w-full bg-slate-800/50 border border-green-500/50 rounded-lg px-4 py-3">
                               <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium text-slate-200 capitalize">
-                                  {availableNetworks[0].network}
+                                  {networks[0]}
                                 </span>
                                 <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
-                                  Auto Selected
+                                  Only option
                                 </span>
                               </div>
                             </div>
                             <button
-                              onClick={() => {
-                                setStep('amount');
-                              }}
+                              onClick={handleContinueToAmount}
                               className="w-full py-3 rounded-lg font-medium text-sm bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg hover:shadow-green-500/20 transition-all"
                             >
                               Continue
                             </button>
-                          </>
-                        ) : (
-                          // Multiple networks - show dropdown  
-                          <>
+                          </div>
+                        );
+                      } else {
+                        // Multiple network options (e.g., USDT on ETH/TRON/Polygon)
+                        return (
+                          <div className="space-y-3">
+                            <label className="text-xs uppercase tracking-widest text-slate-400 block">
+                              Select Network
+                            </label>
                             <select
-                              value={selectedNetwork?.network || ''}
-                              onChange={(e) => {
-                                const selected = availableNetworks.find(n => n.network === e.target.value);
-                                if (selected) {
-                                  setSelectedNetwork(selected);
-                                }
-                              }}
+                              value={selectedNetwork}
+                              onChange={(e) => setSelectedNetwork(e.target.value)}
                               className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-slate-100 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/20 transition-all appearance-none cursor-pointer"
                             >
                               <option value="">Select a network...</option>
-                              {availableNetworks.map((net) => (
-                                <option key={net.network} value={net.network}>
-                                  {net.network.charAt(0).toUpperCase() + net.network.slice(1)}
+                              {networks.map((network) => (
+                                <option key={network} value={network}>
+                                  {network.charAt(0).toUpperCase() + network.slice(1)}
                                 </option>
                               ))}
                             </select>
                             <button
-                              onClick={() => {
-                                if (selectedNetwork) {
-                                  setStep('amount');
-                                }
-                              }}
+                              onClick={handleContinueToAmount}
                               disabled={!selectedNetwork}
                               className={`w-full py-3 rounded-lg font-medium text-sm transition-all duration-200 ${
                                 selectedNetwork
@@ -380,12 +370,12 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                                   : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
                               }`}
                             >
-                              Continue with {selectedNetwork ? selectedNetwork.network : 'Network'}
+                              Continue with {selectedNetwork ? selectedNetwork : 'Network'}
                             </button>
-                          </>
-                        )}
-                      </div>
-                    ) : null}
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
                 )}
               </div>
@@ -410,10 +400,10 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                         <span className="text-sm font-medium text-slate-200">{selectedCrypto.symbol}</span>
                       </div>
                     )}
-                    {selectedNetwork && (
+                    {selectedNetwork && getNetworksForCrypto(selectedCrypto?.id || '').length > 0 && (
                       <div className="flex items-center space-x-2 bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-700/30">
                         <span className="text-sm text-slate-400">on</span>
-                        <span className="text-sm font-medium text-slate-200 capitalize">{selectedNetwork.network}</span>
+                        <span className="text-sm font-medium text-slate-200 capitalize">{selectedNetwork}</span>
                       </div>
                     )}
                   </div>
@@ -498,12 +488,12 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                       <span className="text-sm font-medium text-slate-200">{selectedCrypto?.symbol}</span>
                     </div>
                   </div>
-                  {selectedNetwork && (
+                  {selectedNetwork && getNetworksForCrypto(selectedCrypto?.id || '').length > 0 && (
                     <>
                       <div className="h-px bg-slate-700/30" />
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-400">Network</span>
-                        <span className="text-sm font-medium text-slate-200 capitalize">{selectedNetwork.network}</span>
+                        <span className="text-sm font-medium text-slate-200 capitalize">{selectedNetwork}</span>
                       </div>
                     </>
                   )}
