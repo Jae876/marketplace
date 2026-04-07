@@ -56,16 +56,25 @@ export async function POST(req: NextRequest) {
     const walletConfig = await db.getWalletConfig();
     let walletAddress = '';
     
+    console.log('[DEPOSIT] Received - crypto:', cryptocurrency, 'network:', network);
+    console.log('[DEPOSIT] Wallet config keys available:', Object.keys(walletConfig));
+    
     // If network selected, try network-specific key first (e.g., "usdt_tron")
     if (network) {
       const networkKey = `${cryptocurrency}_${network}`;
+      console.log('[DEPOSIT] Trying network-specific key:', networkKey);
       walletAddress = walletConfig[networkKey as keyof typeof walletConfig] || '';
+      console.log('[DEPOSIT] Network-specific wallet found:', !!walletAddress);
     }
     
     // Fall back to base key (e.g., "usdt") if network-specific not found
     if (!walletAddress) {
+      console.log('[DEPOSIT] Trying base key:', cryptocurrency);
       walletAddress = walletConfig[cryptocurrency as keyof typeof walletConfig] || '';
+      console.log('[DEPOSIT] Base wallet found:', !!walletAddress);
     }
+    
+    console.log('[DEPOSIT] Final wallet address:', walletAddress);
     
     if (!walletAddress) {
       return NextResponse.json(
