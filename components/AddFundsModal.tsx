@@ -24,7 +24,7 @@ interface NetworkOption {
 }
 
 export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: AddFundModalProps) {
-  const [step, setStep] = useState<'crypto' | 'network' | 'amount' | 'confirm'>('crypto');
+  const [step, setStep] = useState<'crypto' | 'amount' | 'confirm'>('crypto');
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoOption | null>(null);
   const [selectedNetwork, setSelectedNetwork] = useState<NetworkOption | null>(null);
   const [availableNetworks, setAvailableNetworks] = useState<NetworkOption[]>([]);
@@ -59,6 +59,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
         setDepositId('');
         setError('');
         setConfirmationStatus('idle');
+        setLoadingNetworks(false);
       }, 300);
     }
   }, [isOpen]);
@@ -83,15 +84,11 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
       // Auto-select first network if only one available
       if (data.networks.length === 1) {
         setSelectedNetwork(data.networks[0]);
-        setStep('amount');
-      } else if (data.networks.length > 1) {
-        setStep('network');
-      } else {
-        setError('No networks configured for this cryptocurrency');
       }
+      
+      setLoadingNetworks(false);
     } catch (err: any) {
       setError(err.message || 'Failed to load networks');
-    } finally {
       setLoadingNetworks(false);
     }
   };
@@ -99,6 +96,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
   // Handle crypto selection
   const handleCryptoSelect = (crypto: CryptoOption) => {
     setSelectedCrypto(crypto);
+    setSelectedNetwork(null);
     setAmountUsd('');
     setCryptoAmount('0');
     setWalletAddress('');
@@ -299,6 +297,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
             {/* Step 1: Crypto Selection */}
             {step === 'crypto' && (
               <div className="space-y-4 animate-fade-in">
+                {/* Crypto Dropdown */}
                 <div>
                   <label className="text-xs uppercase tracking-widest text-slate-400 block mb-3">
                     Select Cryptocurrency
@@ -308,13 +307,94 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                     onSelect={handleCryptoSelect}
                   />
                 </div>
+
+                {/* Network Dropdown - Shows after crypto selection */}
+                {selectedCrypto && (
+                  <div className="animate-fade-in">
+                    <label className="text-xs uppercase tracking-widest text-slate-400 block mb-3">
+                      Select Network
+                    </label>
+                    
+                    {loadingNetworks ? (
+                      <div className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-slate-500 text-sm">
+                        Loading networks...
+                      </div>
+                    ) : error && availableNetworks.length === 0 ? (
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                        <p className="text-xs text-red-400">{error}</p>
+                      </div>
+                    ) : availableNetworks.length > 0 ? (
+                      <div className="space-y-2">
+                        {availableNetworks.length === 1 ? (
+                          // Single network - show as badge/selected state  
+                          <>
+                            <div className="w-full bg-slate-800/50 border border-green-500/50 rounded-lg px-4 py-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-slate-200 capitalize">
+                                  {availableNetworks[0].network}
+                                </span>
+                                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
+                                  Auto Selected
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setStep('amount');
+                              }}
+                              className="w-full py-3 rounded-lg font-medium text-sm bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg hover:shadow-green-500/20 transition-all"
+                            >
+                              Continue
+                            </button>
+                          </>
+                        ) : (
+                          // Multiple networks - show dropdown  
+                          <>
+                            <select
+                              value={selectedNetwork?.network || ''}
+                              onChange={(e) => {
+                                const selected = availableNetworks.find(n => n.network === e.target.value);
+                                if (selected) {
+                                  setSelectedNetwork(selected);
+                                }
+                              }}
+                              className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-slate-100 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/20 transition-all appearance-none cursor-pointer"
+                            >
+                              <option value="">Select a network...</option>
+                              {availableNetworks.map((net) => (
+                                <option key={net.network} value={net.network}>
+                                  {net.network.charAt(0).toUpperCase() + net.network.slice(1)}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => {
+                                if (selectedNetwork) {
+                                  setStep('amount');
+                                }
+                              }}
+                              disabled={!selectedNetwork}
+                              className={`w-full py-3 rounded-lg font-medium text-sm transition-all duration-200 ${
+                                selectedNetwork
+                                  ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg hover:shadow-green-500/20'
+                                  : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
+                              }`}
+                            >
+                              Continue with {selectedNetwork ? selectedNetwork.network : 'Network'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Step 2: Network Selection */}
-            {step === 'network' && (
+            {/* Step 2: Amount Input */}
+            {step === 'amount' && (
               <div className="space-y-5 animate-fade-in">
-                {/* Back Button + Selected Crypto */}
+                {/* Back Button + Selected Crypto - More Spacing */}
                 <div className="pt-4 pb-2 flex items-center justify-between border-b border-slate-700/30">
                   <button
                     onClick={() => setStep('crypto')}
@@ -323,82 +403,6 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                     <span className="text-base">←</span>
                     <span>Change Crypto</span>
                   </button>
-                  {selectedCrypto && (
-                    <div className="flex items-center space-x-2 bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-700/30">
-                      <span className="text-xl">{selectedCrypto.icon}</span>
-                      <span className="text-sm font-medium text-slate-200">{selectedCrypto.symbol}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Network Selection */}
-                <div className="pt-4 space-y-3">
-                  <label className="text-xs uppercase tracking-widest text-slate-400 block mb-2">
-                    Select Network
-                  </label>
-                  <div className="space-y-2">
-                    {loadingNetworks ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="text-slate-400">Loading networks...</div>
-                      </div>
-                    ) : availableNetworks.length > 0 ? (
-                      availableNetworks.map((net) => (
-                        <button
-                          key={net.network}
-                          onClick={() => {
-                            setSelectedNetwork(net);
-                            setStep('amount');
-                          }}
-                          className={`w-full p-4 rounded-lg border transition-all text-left ${
-                            selectedNetwork?.network === net.network
-                              ? 'bg-green-500/10 border-green-500/50'
-                              : 'bg-slate-800/50 border-slate-700/50 hover:border-slate-600/50'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-slate-200 capitalize">{net.network}</span>
-                            <div className="flex items-center space-x-2">
-                              {net.isConfigured && (
-                                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
-                                  Configured
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                        <p className="text-xs text-red-400">{error || 'No networks available'}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-4">
-                  <button
-                    onClick={() => setStep('crypto')}
-                    className="px-4 py-3 rounded-lg font-medium text-sm bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-200 transition-all border border-slate-700/30"
-                  >
-                    Back
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Amount Input */}
-            {step === 'amount' && (
-              <div className="space-y-5 animate-fade-in">
-                {/* Back Button + Selected Crypto - More Spacing */}
-                <div className="pt-4 pb-2 flex items-center justify-between border-b border-slate-700/30">
-                  <button
-                    onClick={() => availableNetworks.length > 1 ? setStep('network') : setStep('crypto')}
-                    className="text-sm text-slate-300 hover:text-green-400 transition-colors flex items-center space-x-2 py-2 px-2 -ml-2 hover:bg-slate-800/30 rounded"
-                  >
-                    <span className="text-base">←</span>
-                    <span>{availableNetworks.length > 1 ? 'Change Network' : 'Change Crypto'}</span>
-                  </button>
                   <div className="flex items-center space-x-3">
                     {selectedCrypto && (
                       <div className="flex items-center space-x-2 bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-700/30">
@@ -406,7 +410,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                         <span className="text-sm font-medium text-slate-200">{selectedCrypto.symbol}</span>
                       </div>
                     )}
-                    {selectedNetwork && availableNetworks.length > 1 && (
+                    {selectedNetwork && (
                       <div className="flex items-center space-x-2 bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-700/30">
                         <span className="text-sm text-slate-400">on</span>
                         <span className="text-sm font-medium text-slate-200 capitalize">{selectedNetwork.network}</span>
@@ -494,7 +498,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                       <span className="text-sm font-medium text-slate-200">{selectedCrypto?.symbol}</span>
                     </div>
                   </div>
-                  {selectedNetwork && availableNetworks.length > 1 && (
+                  {selectedNetwork && (
                     <>
                       <div className="h-px bg-slate-700/30" />
                       <div className="flex items-center justify-between">
