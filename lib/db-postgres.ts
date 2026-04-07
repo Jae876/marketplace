@@ -172,6 +172,16 @@ async function initializeTables() {
     `;
     console.log('[NEON] ✓ wallet_config table created/exists');
 
+    // CRITICAL: Clear wallet_config to ensure only admin-configured wallets are used
+    // No default/hardcoded wallets should exist
+    try {
+      await sql`DELETE FROM wallet_config`;
+      await sql`INSERT INTO wallet_config (config) VALUES ('{}')`;
+      console.log('[NEON] ✓ wallet_config cleared - only admin configuration will be used');
+    } catch (clearError: any) {
+      console.log('[NEON] wallet_config clear note:', clearError.message);
+    }
+
     // Create giveaway_state table
     await sql`
       CREATE TABLE IF NOT EXISTS giveaway_state (
