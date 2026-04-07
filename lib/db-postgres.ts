@@ -172,40 +172,43 @@ async function initializeTables() {
     `;
     console.log('[NEON] ✓ wallet_config table created/exists');
 
-    // Ensure wallet config has all required keys
+    // Ensure wallet config has ONLY base cryptocurrency keys (no network-specific)
     try {
-      const defaultConfig = {
-        ethereum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        bitcoin: '',
-        usdt: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdc: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        dai: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        busd: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        cardano: '',
-        solana: '',
-        polkadot: '',
-        ripple: '',
-        litecoin: '',
-        dogecoin: '',
-        avalanche: '',
-        polygon: '',
-        optimism: '',
-        arbitrum: '',
-        cosmos: '',
-        monero: '',
-      };
+      const baseKeys = [
+        'ethereum', 'bitcoin', 'usdt', 'usdc', 'dai', 'busd',
+        'cardano', 'solana', 'polkadot', 'ripple', 'litecoin', 
+        'dogecoin', 'avalanche', 'polygon', 'optimism', 'arbitrum',
+        'cosmos', 'monero'
+      ];
+
+      const defaultConfig: Record<string, string> = {};
+      baseKeys.forEach(key => {
+        defaultConfig[key] = '';
+      });
+      // Set known admin wallets
+      defaultConfig['ethereum'] = '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0';
+      defaultConfig['usdt'] = '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0';
+      defaultConfig['usdc'] = '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0';
+      defaultConfig['dai'] = '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0';
+      defaultConfig['busd'] = '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0';
 
       const existing = await sql`SELECT config FROM wallet_config LIMIT 1`;
       if ((existing as any[]).length === 0) {
         // Table is empty - insert default config
         await sql`INSERT INTO wallet_config (config) VALUES (${JSON.stringify(defaultConfig)})`;
-        console.log('[NEON] ✓ wallet_config seeded with default wallets');
+        console.log('[NEON] ✓ wallet_config seeded with base cryptocurrency wallets');
       } else {
-        // Table has data - merge with defaults to ensure all base crypto keys exist
+        // Table has data - extract ONLY base keys from current config and merge
         const currentConfig = ((existing as any[])[0]?.config) || {};
-        const mergedConfig = { ...defaultConfig, ...currentConfig };
-        await sql`UPDATE wallet_config SET config = ${JSON.stringify(mergedConfig)} WHERE id = 1`;
-        console.log('[NEON] ✓ wallet_config updated with any missing base keys');
+        const cleanedConfig: Record<string, string> = {};
+        
+        // Only keep base keys from current config, ignore network-specific keys
+        baseKeys.forEach(key => {
+          cleanedConfig[key] = currentConfig[key] || defaultConfig[key] || '';
+        });
+        
+        await sql`UPDATE wallet_config SET config = ${JSON.stringify(cleanedConfig)} WHERE id = 1`;
+        console.log('[NEON] ✓ wallet_config cleaned - removed network-specific keys, kept only base cryptocurrencies');
       }
     } catch (seedError: any) {
       console.log('[NEON] Wallet config setup error:', seedError.message);
