@@ -178,21 +178,21 @@ async function initializeTables() {
         ethereum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
         bitcoin: '',
         usdt: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdt_ethereum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdt_tron: 'TUhXXVu4W3dJmqCqeqXzPKNn8fF2kEKW7K',
-        usdt_polygon: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdt_bsc: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
         usdc: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdc_ethereum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdc_polygon: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdc_arbitrum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        usdc_optimism: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
         dai: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        dai_ethereum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        dai_polygon: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
         busd: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        busd_ethereum: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
-        busd_bsc: '0x72ACc72FfA2b4ce6E4170e17D2416Bb27D34FaB0',
+        cardano: '',
+        solana: '',
+        polkadot: '',
+        ripple: '',
+        litecoin: '',
+        dogecoin: '',
+        avalanche: '',
+        polygon: '',
+        optimism: '',
+        arbitrum: '',
+        cosmos: '',
+        monero: '',
       };
 
       const existing = await sql`SELECT config FROM wallet_config LIMIT 1`;
@@ -201,11 +201,11 @@ async function initializeTables() {
         await sql`INSERT INTO wallet_config (config) VALUES (${JSON.stringify(defaultConfig)})`;
         console.log('[NEON] ✓ wallet_config seeded with default wallets');
       } else {
-        // Table has data - merge with defaults to ensure all keys exist
+        // Table has data - merge with defaults to ensure all base crypto keys exist
         const currentConfig = ((existing as any[])[0]?.config) || {};
         const mergedConfig = { ...defaultConfig, ...currentConfig };
         await sql`UPDATE wallet_config SET config = ${JSON.stringify(mergedConfig)} WHERE id = 1`;
-        console.log('[NEON] ✓ wallet_config updated with any missing keys');
+        console.log('[NEON] ✓ wallet_config updated with any missing base keys');
       }
     } catch (seedError: any) {
       console.log('[NEON] Wallet config setup error:', seedError.message);
