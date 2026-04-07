@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { cryptocurrency, amountUsd } = await req.json();
+    const { cryptocurrency, amountUsd, network } = await req.json();
 
     if (!cryptocurrency || !amountUsd) {
       return NextResponse.json(
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get admin wallet - EXACT SAME LOGIC AS PRODUCT PURCHASE
+    // Get admin wallet - use EXACT same logic as product purchase (lines 65-72 of payment/create)
     const walletConfig = await db.getWalletConfig();
     const walletAddress = walletConfig[cryptocurrency as keyof typeof walletConfig];
     
@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
       cryptoAmount: cryptoAmount,
       cryptoSymbol: cryptoInfo?.symbol || cryptocurrency.toUpperCase(),
       cryptocurrency,
+      network: network || 'default',
     }, {
       headers: {
         'Content-Type': 'application/json',
