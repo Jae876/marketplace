@@ -167,7 +167,6 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
         body: JSON.stringify({
           cryptocurrency: selectedCrypto.id,
           amountUsd: usdAmount,
-          network: selectedNetwork || undefined,
         }),
       });
 
