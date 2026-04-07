@@ -158,10 +158,6 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
     try {
       const token = localStorage.getItem('token');
       
-      // Get the network to pass (for multi-network cryptos) or undefined
-      const networks = getNetworksForCrypto(selectedCrypto.id);
-      const networkParam = networks.length > 0 ? selectedNetwork : undefined;
-      
       const response = await fetch('/api/payment/deposit/create', {
         method: 'POST',
         headers: {
@@ -171,7 +167,6 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
         body: JSON.stringify({
           cryptocurrency: selectedCrypto.id,
           amountUsd: usdAmount,
-          network: networkParam,
         }),
       });
 
