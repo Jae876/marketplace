@@ -55,40 +55,18 @@ export async function POST(req: NextRequest) {
     // Get admin wallet for the selected cryptocurrency and network
     const walletConfig = await db.getWalletConfig();
     
-    // Network support for multi-network cryptos
-    const MULTI_NETWORK_CRYPTOS: Record<string, string[]> = {
-      usdt: ['ethereum', 'tron', 'polygon', 'bsc'],
-      usdc: ['ethereum', 'polygon', 'arbitrum', 'optimism'],
-      dai: ['ethereum', 'polygon'],
-      busd: ['ethereum', 'bsc'],
-    };
-    
-    // Let walletAddress = '';
     let walletAddress = '';
     const cryptoLower = cryptocurrency.toLowerCase();
     
-    // If network is specified, look for network-specific config first (e.g., "usdt_ethereum")
+    // If network is specified, look for network-specific key first (e.g., "usdt_ethereum")
     if (network) {
       const keyWithNetwork = `${cryptoLower}_${network}`;
       walletAddress = walletConfig[keyWithNetwork as keyof typeof walletConfig] || '';
     }
     
-    // Fall back to non-network key if not found or no network specified
+    // Fall back to base key if network key not found or network not specified
     if (!walletAddress) {
       walletAddress = walletConfig[cryptoLower as keyof typeof walletConfig] || '';
-    }
-    
-    // If still not found and it's a multi-network crypto, search for any configured network variant
-    if (!walletAddress && MULTI_NETWORK_CRYPTOS[cryptoLower]) {
-      const networks = MULTI_NETWORK_CRYPTOS[cryptoLower];
-      for (const net of networks) {
-        const networkKey = `${cryptoLower}_${net}`;
-        const candidate = walletConfig[networkKey as keyof typeof walletConfig];
-        if (candidate && candidate.trim()) {
-          walletAddress = candidate;
-          break; // Use first found configured network
-        }
-      }
     }
     
     if (!walletAddress || !walletAddress.trim()) {
