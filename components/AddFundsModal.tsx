@@ -24,7 +24,7 @@ interface NetworkOption {
 
 // Multi-network cryptocurrencies with their available networks
 const MULTI_NETWORK_CRYPTOS: Record<string, NetworkOption[]> = {
-  tether: [
+  usdt: [
     { id: 'ethereum', name: 'Ethereum Network' },
     { id: 'tron', name: 'Tron Network' },
     { id: 'polygon', name: 'Polygon Network' },
@@ -159,9 +159,10 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
 
   // Get the cryptocurrency key to send to the API
   const getCryptoKeyForAPI = (): string => {
-    // Send ONLY the base crypto name - exact same as product purchase
-    // Network selection is UI only, doesn't affect the API call
-    return selectedCrypto?.id || '';
+    // Send crypto_network format to match admin wallet config keys (same as product purchase)
+    const baseKey = selectedCrypto?.id || '';
+    const network = selectedNetwork?.id;
+    return network ? `${baseKey}_${network}` : baseKey;
   };
 
   // Create deposit transaction
