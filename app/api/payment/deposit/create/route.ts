@@ -53,12 +53,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Get admin wallet for the selected cryptocurrency
-    // Exact same logic as product purchase - direct lookup from admin config
+    // Check walletConfig in order of specificity for how admin might have configured it
     const walletConfig = await db.getWalletConfig();
-    console.log('[DEPOSIT] Wallet config keys available:', Object.keys(walletConfig));
-    console.log('[DEPOSIT] Looking up cryptocurrency:', cryptocurrency);
-    const walletAddress = walletConfig[cryptocurrency as keyof typeof walletConfig];
-    console.log('[DEPOSIT] Found wallet address:', walletAddress ? 'YES' : 'NO');
+    let walletAddress = walletConfig[cryptocurrency as keyof typeof walletConfig];
+    
+    // Try network-specific key if base key not found (e.g., usdt_ethereum if usdt not found)
+    // This handles cases where admin configured network-specific wallets
+    if (!walletAddress && !cryptocurrency.includes('_')) {
+      // Try common networks for this coin (usdt -> usdt_ethereum, usdt_tron, etc)
+      for (const network of ['ethereum', 'tron', 'polygon', 'bsc', 'arbitrum', 'optimism']) {
+        const networkKey = `${cryptocurrency}_${network}`;
+        if (walletConfig[networkKey as keyof typeof walletConfig]) {
+          walletAddress = walletConfig[networkKey as keyof typeof walletConfig];
+          break;
+        }
+      }
+    }
     
     if (!walletAddress) {
       return NextResponse.json(
