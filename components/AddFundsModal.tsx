@@ -24,7 +24,7 @@ interface NetworkOption {
 
 // Multi-network cryptocurrencies with their available networks
 const MULTI_NETWORK_CRYPTOS: Record<string, NetworkOption[]> = {
-  usdt: [
+  tether: [
     { id: 'ethereum', name: 'Ethereum Network' },
     { id: 'tron', name: 'Tron Network' },
     { id: 'polygon', name: 'Polygon Network' },
