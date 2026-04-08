@@ -355,7 +355,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                           className="w-full p-3 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/60 hover:border-green-500/50 text-left transition-all group"
                         >
                           <div className="flex items-center space-x-3">
-                            <div className="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-green-500 transition-colors" />
+                            <span className="text-lg">{network.icon}</span>
                             <span className="text-sm text-slate-200 group-hover:text-green-400 transition-colors">{network.name}</span>
                           </div>
                         </button>
