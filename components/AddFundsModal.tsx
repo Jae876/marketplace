@@ -17,9 +17,39 @@ interface CryptoOption {
   color: string;
 }
 
+interface NetworkOption {
+  id: string;
+  name: string;
+}
+
+// Multi-network cryptocurrencies with their available networks
+const MULTI_NETWORK_CRYPTOS: Record<string, NetworkOption[]> = {
+  usdt: [
+    { id: 'ethereum', name: 'Ethereum Network' },
+    { id: 'tron', name: 'Tron Network' },
+    { id: 'polygon', name: 'Polygon Network' },
+    { id: 'bsc', name: 'BSC Network' },
+  ],
+  usdc: [
+    { id: 'ethereum', name: 'Ethereum Network' },
+    { id: 'polygon', name: 'Polygon Network' },
+    { id: 'arbitrum', name: 'Arbitrum Network' },
+    { id: 'optimism', name: 'Optimism Network' },
+  ],
+  dai: [
+    { id: 'ethereum', name: 'Ethereum Network' },
+    { id: 'polygon', name: 'Polygon Network' },
+  ],
+  busd: [
+    { id: 'ethereum', name: 'Ethereum Network' },
+    { id: 'bsc', name: 'BSC Network' },
+  ],
+};
+
 export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: AddFundModalProps) {
-  const [step, setStep] = useState<'crypto' | 'amount' | 'confirm'>('crypto');
+  const [step, setStep] = useState<'crypto' | 'network' | 'amount' | 'confirm'>('crypto');
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoOption | null>(null);
+  const [selectedNetwork, setSelectedNetwork] = useState<NetworkOption | null>(null);
   const [amountUsd, setAmountUsd] = useState('');
   const [cryptoAmount, setCryptoAmount] = useState('0');
   const [walletAddress, setWalletAddress] = useState('');
@@ -42,6 +72,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
       setTimeout(() => {
         setStep('crypto');
         setSelectedCrypto(null);
+        setSelectedNetwork(null);
         setAmountUsd('');
         setCryptoAmount('0');
         setWalletAddress('');
@@ -55,6 +86,24 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
   // Handle crypto selection
   const handleCryptoSelect = (crypto: CryptoOption) => {
     setSelectedCrypto(crypto);
+    setSelectedNetwork(null);
+    setAmountUsd('');
+    setCryptoAmount('0');
+    setWalletAddress('');
+    setError('');
+    
+    // Check if this crypto has multiple networks
+    const hasMultipleNetworks = MULTI_NETWORK_CRYPTOS[crypto.id];
+    if (hasMultipleNetworks) {
+      setStep('network');
+    } else {
+      setStep('amount');
+    }
+  };
+
+  // Handle network selection
+  const handleNetworkSelect = (network: NetworkOption) => {
+    setSelectedNetwork(network);
     setAmountUsd('');
     setCryptoAmount('0');
     setWalletAddress('');
@@ -108,6 +157,14 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
     setCryptoAmount(cryptoAmt);
   };
 
+  // Get the cryptocurrency key to send to the API
+  const getCryptoKeyForAPI = (): string => {
+    if (selectedNetwork && selectedCrypto) {
+      return `${selectedCrypto.id}_${selectedNetwork.id}`;
+    }
+    return selectedCrypto?.id || '';
+  };
+
   // Create deposit transaction
   const handleCreateDeposit = async () => {
     if (!selectedCrypto || !amountUsd) {
@@ -126,6 +183,8 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
 
     try {
       const token = localStorage.getItem('token');
+      const cryptoKey = getCryptoKeyForAPI();
+      
       const response = await fetch('/api/payment/deposit/create', {
         method: 'POST',
         headers: {
@@ -133,7 +192,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          cryptocurrency: selectedCrypto.id,
+          cryptocurrency: cryptoKey,
           amountUsd: usdAmount,
         }),
       });
@@ -264,22 +323,69 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
               </div>
             )}
 
-            {/* Step 2: Amount Input */}
+            {/* Step 2: Network Selection (for multi-network coins) */}
+            {step === 'network' && selectedCrypto && (
+              <div className="space-y-4 animate-fade-in">
+                {/* Back Button */}
+                <button
+                  onClick={() => setStep('crypto')}
+                  className="text-sm text-slate-300 hover:text-green-400 transition-colors flex items-center space-x-2 py-2 px-2 -ml-2 hover:bg-slate-800/30 rounded"
+                >
+                  <span className="text-base">←</span>
+                  <span>Back</span>
+                </button>
+
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-slate-400 block mb-3">
+                    Select Network
+                  </label>
+                  <div className="space-y-2">
+                    {MULTI_NETWORK_CRYPTOS[selectedCrypto.id]?.map((network: NetworkOption) => (
+                      <button
+                        key={network.id}
+                        onClick={() => handleNetworkSelect(network)}
+                        className="w-full p-3 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/60 hover:border-green-500/50 text-left transition-all group"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-green-500 transition-colors" />
+                          <span className="text-sm text-slate-200 group-hover:text-green-400 transition-colors">{network.name}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Amount Input */}
             {step === 'amount' && (
               <div className="space-y-5 animate-fade-in">
-                {/* Back Button + Selected Crypto - More Spacing */}
+                {/* Back Button + Selected Crypto / Network */}
                 <div className="pt-4 pb-2 flex items-center justify-between border-b border-slate-700/30">
                   <button
-                    onClick={() => setStep('crypto')}
+                    onClick={() => {
+                      if (selectedNetwork) {
+                        setSelectedNetwork(null);
+                        setStep('network');
+                      } else {
+                        setStep('crypto');
+                      }
+                    }}
                     className="text-sm text-slate-300 hover:text-green-400 transition-colors flex items-center space-x-2 py-2 px-2 -ml-2 hover:bg-slate-800/30 rounded"
                   >
                     <span className="text-base">←</span>
-                    <span>Change Crypto</span>
+                    <span>{selectedNetwork ? 'Change Network' : 'Change Crypto'}</span>
                   </button>
                   {selectedCrypto && (
-                    <div className="flex items-center space-x-2 bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-700/30">
+                    <div className="flex items-center space-x-3 bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-700/30">
                       <span className="text-xl">{selectedCrypto.icon}</span>
                       <span className="text-sm font-medium text-slate-200">{selectedCrypto.symbol}</span>
+                      {selectedNetwork && (
+                        <>
+                          <div className="w-px h-4 bg-slate-600/30" />
+                          <span className="text-xs text-slate-400">{selectedNetwork.name}</span>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -351,7 +457,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
               </div>
             )}
 
-            {/* Step 3: Confirmation & Deposit Address */}
+            {/* Step 4: Confirmation & Deposit Address */}
             {step === 'confirm' && (
               <div className="space-y-4 animate-fade-in">
                 {/* Summary */}
@@ -363,6 +469,15 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                       <span className="text-sm font-medium text-slate-200">{selectedCrypto?.symbol}</span>
                     </div>
                   </div>
+                  {selectedNetwork && (
+                    <>
+                      <div className="h-px bg-slate-700/30" />
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Network</span>
+                        <span className="text-sm font-light text-slate-100">{selectedNetwork.name}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="h-px bg-slate-700/30" />
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-400">Amount (USD)</span>
