@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import CryptoDropdown from './CryptoDropdown';
+import { SUPPORTED_CRYPTOS } from '@/lib/crypto';
 
 interface AddFundModalProps {
   isOpen: boolean;
@@ -21,30 +22,6 @@ interface NetworkOption {
   id: string;
   name: string;
 }
-
-// Multi-network cryptocurrencies with their available networks
-const MULTI_NETWORK_CRYPTOS: Record<string, NetworkOption[]> = {
-  usdt: [
-    { id: 'ethereum', name: 'Ethereum Network' },
-    { id: 'tron', name: 'Tron Network' },
-    { id: 'polygon', name: 'Polygon Network' },
-    { id: 'bsc', name: 'BSC Network' },
-  ],
-  usdc: [
-    { id: 'ethereum', name: 'Ethereum Network' },
-    { id: 'polygon', name: 'Polygon Network' },
-    { id: 'arbitrum', name: 'Arbitrum Network' },
-    { id: 'optimism', name: 'Optimism Network' },
-  ],
-  dai: [
-    { id: 'ethereum', name: 'Ethereum Network' },
-    { id: 'polygon', name: 'Polygon Network' },
-  ],
-  busd: [
-    { id: 'ethereum', name: 'Ethereum Network' },
-    { id: 'bsc', name: 'BSC Network' },
-  ],
-};
 
 export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: AddFundModalProps) {
   const [step, setStep] = useState<'crypto' | 'network' | 'amount' | 'confirm'>('crypto');
@@ -92,8 +69,9 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
     setWalletAddress('');
     setError('');
     
-    // Check if this crypto has multiple networks
-    const hasMultipleNetworks = MULTI_NETWORK_CRYPTOS[crypto.id];
+    // Check if this crypto has multiple networks (use SUPPORTED_CRYPTOS for accurate data)
+    const supportedCrypto = SUPPORTED_CRYPTOS.find(c => c.id === crypto.id);
+    const hasMultipleNetworks = supportedCrypto?.networks && supportedCrypto.networks.length > 0;
     if (hasMultipleNetworks) {
       setStep('network');
     } else {
@@ -340,10 +318,10 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                     Select Network
                   </label>
                   <div className="space-y-2">
-                    {MULTI_NETWORK_CRYPTOS[selectedCrypto.id]?.map((network: NetworkOption) => (
+                    {SUPPORTED_CRYPTOS.find(c => c.id === selectedCrypto.id)?.networks?.map((network) => (
                       <button
                         key={network.id}
-                        onClick={() => handleNetworkSelect(network)}
+                        onClick={() => handleNetworkSelect(network as any)}
                         className="w-full p-3 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/60 hover:border-green-500/50 text-left transition-all group"
                       >
                         <div className="flex items-center space-x-3">
