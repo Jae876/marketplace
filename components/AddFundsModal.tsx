@@ -21,7 +21,6 @@ interface CryptoOption {
 interface NetworkOption {
   id: string;
   name: string;
-  icon?: string;
 }
 
 // Map CryptoDropdown IDs to SUPPORTED_CRYPTOS IDs (they use different naming)
@@ -52,37 +51,13 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [confirmationStatus, setConfirmationStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
-  const [walletConfig, setWalletConfig] = useState<Record<string, any>>({});
 
   // Auto-show crypto options when modal opens
   useEffect(() => {
     if (isOpen) {
       setStep('crypto');
-      // Fetch wallet config to see what networks are available
-      fetchWalletConfig();
     }
   }, [isOpen]);
-
-  // Fetch wallet config from admin endpoint
-  const fetchWalletConfig = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      
-      const response = await fetch('/api/admin/wallets', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setWalletConfig(data.wallets || {});
-      }
-    } catch (err) {
-      console.error('[ADD FUNDS] Error fetching wallet config:', err);
-    }
-  };
 
   // Reset states when modal is closed
   useEffect(() => {
@@ -373,20 +348,14 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                   <div className="space-y-2">
                     {(() => {
                       const supportedCrypto = SUPPORTED_CRYPTOS.find(c => c.id === selectedCrypto.id);
-                      // Filter networks to only show ones that are configured in admin wallet config
-                      const availableNetworks = supportedCrypto?.networks?.filter(network => {
-                        const configKey = `${selectedCrypto.id}_${network.id}`;
-                        return walletConfig[configKey];
-                      }) || [];
-                      
-                      return availableNetworks.map((network) => (
+                      return supportedCrypto?.networks?.map((network) => (
                         <button
                           key={network.id}
                           onClick={() => handleNetworkSelect(network as any)}
                           className="w-full p-3 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/60 hover:border-green-500/50 text-left transition-all group"
                         >
                           <div className="flex items-center space-x-3">
-                            <span className="text-lg">{network.icon || '●'}</span>
+                            <span className="text-lg">{network.icon}</span>
                             <span className="text-sm text-slate-200 group-hover:text-green-400 transition-colors">{network.name}</span>
                           </div>
                         </button>
