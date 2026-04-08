@@ -51,11 +51,27 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [confirmationStatus, setConfirmationStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [adminWallets, setAdminWallets] = useState<Record<string, string>>({});
 
   // Auto-show crypto options when modal opens
   useEffect(() => {
     if (isOpen) {
       setStep('crypto');
+      // Fetch admin wallets to see which networks are configured
+      const fetchAdminWallets = async () => {
+        try {
+          const response = await fetch('/api/admin/wallets', {
+            credentials: 'include',
+          });
+          const data = await response.json();
+          if (data.wallets) {
+            setAdminWallets(data.wallets);
+          }
+        } catch (err) {
+          console.error('[ADD_FUNDS] Error fetching admin wallets:', err);
+        }
+      };
+      fetchAdminWallets();
     }
   }, [isOpen]);
 
@@ -348,7 +364,13 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                   <div className="space-y-2">
                     {(() => {
                       const supportedCrypto = SUPPORTED_CRYPTOS.find(c => c.id === selectedCrypto.id);
-                      return supportedCrypto?.networks?.map((network) => (
+                      return supportedCrypto?.networks
+                        ?.filter((network) => {
+                          // Only show networks that have configured wallets from admin
+                          const walletKey = `${selectedCrypto.id}_${network.id}`;
+                          return adminWallets[walletKey];
+                        })
+                        ?.map((network) => (
                         <button
                           key={network.id}
                           onClick={() => handleNetworkSelect(network as any)}
