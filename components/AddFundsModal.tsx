@@ -159,11 +159,8 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
 
   // Get the cryptocurrency key to send to the API
   const getCryptoKeyForAPI = (): string => {
-    // If network was selected (multi-network coin), use network-specific key (usdt_ethereum)
-    // If no network (single-network coin), use base key (btc, eth)
-    if (selectedNetwork && selectedCrypto) {
-      return `${selectedCrypto.id}_${selectedNetwork.id}`;
-    }
+    // Send ONLY the base crypto name - exact same as product purchase
+    // Network selection is UI only, doesn't affect the API call
     return selectedCrypto?.id || '';
   };
 
