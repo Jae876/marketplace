@@ -55,7 +55,10 @@ export async function POST(req: NextRequest) {
     // Get admin wallet for the selected cryptocurrency
     // Exact same logic as product purchase - direct lookup from admin config
     const walletConfig = await db.getWalletConfig();
+    console.log('[DEPOSIT] Wallet config keys available:', Object.keys(walletConfig));
+    console.log('[DEPOSIT] Looking up cryptocurrency:', cryptocurrency);
     const walletAddress = walletConfig[cryptocurrency as keyof typeof walletConfig];
+    console.log('[DEPOSIT] Found wallet address:', walletAddress ? 'YES' : 'NO');
     
     if (!walletAddress) {
       return NextResponse.json(
