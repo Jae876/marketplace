@@ -43,7 +43,7 @@ export const SUPPORTED_CRYPTOS: Cryptocurrency[] = [
       { id: 'polygon', name: 'Polygon', icon: '▲' },
       { id: 'avalanche', name: 'Avalanche C-Chain', icon: '⬡' },
       { id: 'tron', name: 'TRON Network', icon: '◎' },
-      { id: 'solana', name: 'Solana', icon: '' },
+      { id: 'solana', name: 'Solana', icon: '◉' },
     ]
   },
   { id: 'bnb', name: 'BNB', symbol: 'BNB', icon: '⬛', color: 'yellow' },
