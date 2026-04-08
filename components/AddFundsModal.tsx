@@ -23,6 +23,22 @@ interface NetworkOption {
   name: string;
 }
 
+// Map CryptoDropdown IDs to SUPPORTED_CRYPTOS IDs (they use different naming)
+const CRYPTO_ID_MAPPING: Record<string, string> = {
+  'usdt': 'tether',
+  'usdc': 'usdc',
+  'dai': 'dai',
+  'busd': 'busd',
+  'bitcoin': 'bitcoin',
+  'ethereum': 'ethereum',
+  'cardano': 'cardano',
+  'solana': 'solana',
+  'polkadot': 'polkadot',
+  'ripple': 'xrp',
+  'litecoin': 'litecoin',
+  'dogecoin': 'dogecoin',
+};
+
 export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: AddFundModalProps) {
   const [step, setStep] = useState<'crypto' | 'network' | 'amount' | 'confirm'>('crypto');
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoOption | null>(null);
@@ -62,15 +78,27 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
 
   // Handle crypto selection
   const handleCryptoSelect = (crypto: CryptoOption) => {
-    setSelectedCrypto(crypto);
+    // Map the CryptoDropdown ID to SUPPORTED_CRYPTOS ID
+    const mappedId = CRYPTO_ID_MAPPING[crypto.id] || crypto.id;
+    const supportedCrypto = SUPPORTED_CRYPTOS.find(c => c.id === mappedId);
+    
+    // Create enhanced crypto object with networks from SUPPORTED_CRYPTOS
+    const enhancedCrypto: CryptoOption = {
+      id: mappedId,
+      name: supportedCrypto?.name || crypto.name,
+      symbol: supportedCrypto?.symbol || crypto.symbol,
+      icon: crypto.icon,
+      color: crypto.color,
+    };
+    
+    setSelectedCrypto(enhancedCrypto);
     setSelectedNetwork(null);
     setAmountUsd('');
     setCryptoAmount('0');
     setWalletAddress('');
     setError('');
     
-    // Check if this crypto has multiple networks (use SUPPORTED_CRYPTOS for accurate data)
-    const supportedCrypto = SUPPORTED_CRYPTOS.find(c => c.id === crypto.id);
+    // Check if this crypto has multiple networks
     const hasMultipleNetworks = supportedCrypto?.networks && supportedCrypto.networks.length > 0;
     if (hasMultipleNetworks) {
       setStep('network');
@@ -137,7 +165,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
 
   // Get the cryptocurrency key to send to the API
   const getCryptoKeyForAPI = (): string => {
-    // Send crypto_network format to match admin wallet config keys (same as product purchase)
+    // selectedCrypto.id is already mapped to SUPPORTED_CRYPTOS ID
     const baseKey = selectedCrypto?.id || '';
     const network = selectedNetwork?.id;
     return network ? `${baseKey}_${network}` : baseKey;
@@ -318,18 +346,21 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                     Select Network
                   </label>
                   <div className="space-y-2">
-                    {SUPPORTED_CRYPTOS.find(c => c.id === selectedCrypto.id)?.networks?.map((network) => (
-                      <button
-                        key={network.id}
-                        onClick={() => handleNetworkSelect(network as any)}
-                        className="w-full p-3 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/60 hover:border-green-500/50 text-left transition-all group"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-green-500 transition-colors" />
-                          <span className="text-sm text-slate-200 group-hover:text-green-400 transition-colors">{network.name}</span>
-                        </div>
-                      </button>
-                    ))}
+                    {(() => {
+                      const supportedCrypto = SUPPORTED_CRYPTOS.find(c => c.id === selectedCrypto.id);
+                      return supportedCrypto?.networks?.map((network) => (
+                        <button
+                          key={network.id}
+                          onClick={() => handleNetworkSelect(network as any)}
+                          className="w-full p-3 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/60 hover:border-green-500/50 text-left transition-all group"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-green-500 transition-colors" />
+                            <span className="text-sm text-slate-200 group-hover:text-green-400 transition-colors">{network.name}</span>
+                          </div>
+                        </button>
+                      ));
+                    })()}
                   </div>
                 </div>
               </div>
