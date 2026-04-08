@@ -884,18 +884,17 @@ export class PostgresDatabase {
   async updateWalletConfig(config: Partial<WalletConfig>): Promise<void> {
     await initializeTables();
     try {
-      const existing = await sql`SELECT id, config FROM wallet_config LIMIT 1`;
+      const existing = await sql`SELECT config FROM wallet_config LIMIT 1`;
       const currentConfig = ((existing as any[])[0]?.config) || {};
       
-      // Merge new config with existing config (preserve existing wallets)
+      // Merge new config with existing - preserve all previously saved wallets
       const mergedConfig = { ...currentConfig, ...config };
 
       if ((existing as any[]).length > 0) {
         await sql`UPDATE wallet_config SET config = ${JSON.stringify(mergedConfig)}, "updatedAt" = NOW() WHERE id = 1`;
       } else {
-        await sql`INSERT INTO wallet_config (config) VALUES (${JSON.stringify(mergedConfig)})`;
+        await sql`INSERT INTO wallet_config (id, config) VALUES (1, ${JSON.stringify(mergedConfig)})`;
       }
-      console.log('[NEON] wallet_config updated:', Object.keys(mergedConfig).length, 'wallets');
     } catch (error) {
       console.error('[NEON] Error updating wallet config:', error);
     }

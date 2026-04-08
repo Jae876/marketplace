@@ -159,9 +159,8 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
 
   // Get the cryptocurrency key to send to the API
   const getCryptoKeyForAPI = (): string => {
-    if (selectedNetwork && selectedCrypto) {
-      return `${selectedCrypto.id}_${selectedNetwork.id}`;
-    }
+    // Send ONLY the base crypto name (usdt, usdc, etc) - same as product purchase
+    // Network selection is UI only, doesn't affect backend lookup
     return selectedCrypto?.id || '';
   };
 
