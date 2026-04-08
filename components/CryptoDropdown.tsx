@@ -32,8 +32,9 @@ const EXODUS_SUPPORTED_CRYPTOS: CryptoOption[] = [
     icon: 'Ξ',
     color: 'from-blue-500 to-blue-600',
   },
+  // Stablecoins
   {
-    id: 'tether',
+    id: 'usdt',
     name: 'Tether USD',
     symbol: 'USDT',
     icon: '₮',
