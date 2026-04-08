@@ -53,8 +53,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Get admin wallet for the selected cryptocurrency
+    // Smart fallback: try network-specific key first, then base key
     const walletConfig = await db.getWalletConfig();
-    const walletAddress = walletConfig[cryptocurrency as keyof typeof walletConfig];
+    let walletAddress = walletConfig[cryptocurrency as keyof typeof walletConfig];
+    
+    // If network-specific key not found (e.g., usdt_ethereum), try base key (usdt)
+    if (!walletAddress && cryptocurrency.includes('_')) {
+      const baseKey = cryptocurrency.split('_')[0];
+      walletAddress = walletConfig[baseKey as keyof typeof walletConfig];
+    }
     
     if (!walletAddress) {
       return NextResponse.json(

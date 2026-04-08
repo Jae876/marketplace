@@ -172,6 +172,17 @@ async function initializeTables() {
     `;
     console.log('[NEON] ✓ wallet_config table created/exists');
 
+    // Ensure wallet_config has at least one row for admin to update
+    try {
+      const existing = await sql`SELECT id FROM wallet_config LIMIT 1`;
+      if ((existing as any[]).length === 0) {
+        await sql`INSERT INTO wallet_config (config) VALUES ('{}')`;
+        console.log('[NEON] ✓ wallet_config initialized with empty object');
+      }
+    } catch (initError: any) {
+      console.log('[NEON] wallet_config init note:', initError.message);
+    }
+
     // Create giveaway_state table
     await sql`
       CREATE TABLE IF NOT EXISTS giveaway_state (
@@ -873,13 +884,18 @@ export class PostgresDatabase {
   async updateWalletConfig(config: Partial<WalletConfig>): Promise<void> {
     await initializeTables();
     try {
-      const existing = await sql`SELECT 1 FROM wallet_config LIMIT 1`;
+      const existing = await sql`SELECT id, config FROM wallet_config LIMIT 1`;
+      const currentConfig = ((existing as any[])[0]?.config) || {};
       
+      // Merge new config with existing config (preserve existing wallets)
+      const mergedConfig = { ...currentConfig, ...config };
+
       if ((existing as any[]).length > 0) {
-        await sql`UPDATE wallet_config SET config = ${JSON.stringify(config)}`;
+        await sql`UPDATE wallet_config SET config = ${JSON.stringify(mergedConfig)}, "updatedAt" = NOW() WHERE id = 1`;
       } else {
-        await sql`INSERT INTO wallet_config (config) VALUES (${JSON.stringify(config)})`;
+        await sql`INSERT INTO wallet_config (config) VALUES (${JSON.stringify(mergedConfig)})`;
       }
+      console.log('[NEON] wallet_config updated:', Object.keys(mergedConfig).length, 'wallets');
     } catch (error) {
       console.error('[NEON] Error updating wallet config:', error);
     }
