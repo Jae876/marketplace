@@ -21,6 +21,7 @@ interface CryptoOption {
 interface NetworkOption {
   id: string;
   name: string;
+  icon?: string;
 }
 
 // Map CryptoDropdown IDs to SUPPORTED_CRYPTOS IDs (they use different naming)
@@ -348,6 +349,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                   <div className="space-y-2">
                     {(() => {
                       const supportedCrypto = SUPPORTED_CRYPTOS.find(c => c.id === selectedCrypto.id);
+                      // Show all networks for this crypto from SUPPORTED_CRYPTOS
                       return supportedCrypto?.networks?.map((network) => (
                         <button
                           key={network.id}
@@ -355,7 +357,7 @@ export default function AddFundsModal({ isOpen, onClose, onDepositConfirmed }: A
                           className="w-full p-3 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/60 hover:border-green-500/50 text-left transition-all group"
                         >
                           <div className="flex items-center space-x-3">
-                            <span className="text-lg">{network.icon}</span>
+                            <span className="text-lg">{network.icon || '●'}</span>
                             <span className="text-sm text-slate-200 group-hover:text-green-400 transition-colors">{network.name}</span>
                           </div>
                         </button>
