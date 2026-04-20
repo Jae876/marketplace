@@ -393,11 +393,17 @@ export default function AdminPage() {
         Object.entries(wallets).filter(([_, value]) => value && value.trim())
       );
 
+      const configCount = Object.keys(walletsToSave).length;
       console.log('[ADMIN] Saving wallets:', {
-        total: Object.keys(wallets).length,
-        configured: Object.keys(walletsToSave).length,
-        data: walletsToSave
+        total_in_state: Object.keys(wallets).length,
+        configured_to_save: configCount,
+        wallet_keys: Object.keys(walletsToSave)
       });
+
+      if (configCount === 0) {
+        setError('Please configure at least one wallet before saving');
+        return;
+      }
 
       const response = await fetch('/api/admin/wallets', {
         method: 'PUT',
@@ -430,8 +436,15 @@ export default function AdminPage() {
         return;
       }
 
-      setSuccess(`✓ Wallet configuration saved! ${Object.keys(walletsToSave).length} wallets configured.`);
-      setTimeout(() => setSuccess(''), 3000);
+      // CRITICAL: Re-fetch wallets immediately to verify they were saved
+      console.log('[ADMIN] Save successful, re-fetching to verify...');
+      await fetchWallets();
+      
+      const verifiedCount = Object.values(wallets).filter(v => typeof v === 'string' && v.trim()).length;
+      console.log('[ADMIN] Verification complete. Wallets now configured:', verifiedCount);
+
+      setSuccess(`✓ Saved ${configCount} wallets. Total configured: ${verifiedCount}/70`);
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err: any) {
       console.error('[ADMIN] Wallet save error:', err);
       setError(err.message || 'Network error. Please check your connection and try again.');

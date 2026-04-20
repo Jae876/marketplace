@@ -39,12 +39,17 @@ export async function GET(req: NextRequest) {
       wallets = await db.getWalletConfig();
     }
 
-    const configuredCount = Object.values(wallets).filter(v => v && typeof v === 'string' && v.trim()).length;
-    console.log(`[ADMIN-WALLETS-GET] Returning ${configuredCount}/${Object.keys(wallets).length || 70} configured wallets`);
+    // DEBUG: Log what we're returning
+    console.log('[ADMIN-WALLETS-GET] Returning wallets:', {
+      total_keys: Object.keys(wallets).length,
+      non_empty: Object.values(wallets).filter(v => v && typeof v === 'string' && v.trim()).length,
+      sample: Object.entries(wallets).slice(0, 3).map(([k, v]) => [k, typeof v, v ? v.substring(0, 20) : 'EMPTY'])
+    });
     
     return NextResponse.json({ wallets }, {
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
       }
     });
   } catch (error: any) {
@@ -76,7 +81,7 @@ export async function PUT(req: NextRequest) {
     let wallets;
     try {
       const bodyText = await req.text();
-      console.log('[ADMIN-WALLETS-PUT] Request body length:', bodyText.length);
+      console.log('[ADMIN-WALLETS-PUT] Request body length:', bodyText.length, 'bytes');
       
       if (!bodyText || bodyText.trim().length === 0) {
         return NextResponse.json(
@@ -87,7 +92,13 @@ export async function PUT(req: NextRequest) {
       
       wallets = JSON.parse(bodyText);
       const walletCount = Object.keys(wallets || {}).length;
-      console.log('[ADMIN-WALLETS-PUT] Parsed wallets:', { count: walletCount, non_empty: Object.values(wallets).filter(v => v).length });
+      const nonEmptyCount = Object.values(wallets).filter(v => v && typeof v === 'string' && v.trim()).length;
+      
+      console.log('[ADMIN-WALLETS-PUT] Parsed request:', {
+        total_wallets: walletCount,
+        non_empty: nonEmptyCount,
+        sample: Object.entries(wallets).slice(0, 3)
+      });
     } catch (parseError: any) {
       console.error('[ADMIN-WALLETS-PUT] JSON parse error:', parseError);
       return NextResponse.json(
@@ -107,14 +118,13 @@ export async function PUT(req: NextRequest) {
     try {
       // Use PostgreSQL if available for persistence on Vercel
       if (dbPostgres && process.env.DATABASE_URL) {
-        console.log('[ADMIN-WALLETS-PUT] Saving to PostgreSQL backend');
-        console.log('[ADMIN-WALLETS-PUT] Wallet count before save:', Object.keys(wallets).length);
+        console.log('[ADMIN-WALLETS-PUT] Saving to PostgreSQL');
         await dbPostgres.updateWalletConfig(wallets);
-        console.log('[ADMIN-WALLETS-PUT] PostgreSQL save completed');
         
-        // Verify what was saved
+        // Verify immediately
         const verification = await dbPostgres.getWalletConfig();
-        console.log('[ADMIN-WALLETS-PUT] Verification - saved wallets count:', Object.keys(verification).length);
+        const savedCount = Object.values(verification).filter(v => v && typeof v === 'string' && v.trim()).length;
+        console.log('[ADMIN-WALLETS-PUT] Verification - now have', savedCount, 'wallets saved');
       } else {
         console.log('[ADMIN-WALLETS-PUT] Fallback: Saving to JSON backend');
         await db.updateWalletConfig(wallets);
@@ -133,6 +143,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true }, {
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
       }
     });
   } catch (error: any) {
