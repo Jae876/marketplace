@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
     console.log('[ADMIN-WALLETS-GET] Returning wallets:', {
       total_keys: Object.keys(wallets).length,
       non_empty: Object.values(wallets).filter(v => v && typeof v === 'string' && v.trim()).length,
-      sample: Object.entries(wallets).slice(0, 3).map(([k, v]) => [k, typeof v, v ? v.substring(0, 20) : 'EMPTY'])
+      sample: Object.entries(wallets).slice(0, 3).map(([k, v]) => [k, typeof v, typeof v === 'string' ? v.substring(0, 20) : 'NOT_STRING'])
     });
     
     return NextResponse.json({ wallets }, {
