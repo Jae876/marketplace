@@ -171,7 +171,7 @@ export default function AdminPage() {
         const mergedWallets = { ...initialStructure, ...data.wallets };
         setWallets(mergedWallets);
         
-        const configuredCount = Object.values(mergedWallets).filter(v => v && v.trim()).length;
+        const configuredCount = Object.values(mergedWallets).filter(v => typeof v === 'string' && v.trim()).length;
         console.log(`[ADMIN-WALLETS] Fetched and merged wallets: ${configuredCount}/${SUPPORTED_CRYPTOS.length} configured`);
       }
     } catch (error) {
@@ -901,7 +901,7 @@ export default function AdminPage() {
 
             <div className="mt-8 p-4 bg-slate-900/30 rounded-lg border border-purple-700/20">
               <p className="text-xs text-gray-500 text-center">
-                Configured: <span className="text-purple-400 font-semibold">{Object.values(wallets).filter(v => v && v.trim()).length}</span> / <span className="text-gray-400">{SUPPORTED_CRYPTOS.length}</span> cryptocurrencies • All addresses are securely stored and used for payment processing only
+                Configured: <span className="text-purple-400 font-semibold">{Object.values(wallets).filter(v => typeof v === 'string' && v.trim()).length}</span> / <span className="text-gray-400">{SUPPORTED_CRYPTOS.length}</span> cryptocurrencies • All addresses are securely stored and used for payment processing only
               </p>
             </div>
 
