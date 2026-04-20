@@ -85,6 +85,8 @@ export async function PUT(req: NextRequest) {
     }
 
     let wallets;
+    let cleanedWallets: Record<string, string> = {};
+    
     try {
       const bodyText = await req.text();
       console.log('[ADMIN-WALLETS-PUT] Request body size:', bodyText.length, 'bytes');
@@ -99,7 +101,6 @@ export async function PUT(req: NextRequest) {
       wallets = JSON.parse(bodyText);
       
       // CRITICAL: Clean the wallets object - ensure all values are strings or empty
-      const cleanedWallets: Record<string, string> = {};
       Object.entries(wallets).forEach(([key, value]) => {
         cleanedWallets[key] = (typeof value === 'string' ? value : '').trim();
       });
