@@ -184,7 +184,7 @@ export default function AdminPage() {
           sample_configured: Object.entries(data.wallets)
             .filter(([k, v]) => typeof v === 'string' && v.trim())
             .slice(0, 3)
-            .map(([k, v]) => [k, v.substring(0, 20) + '...'])
+            .map(([k, v]) => [k, (v as string).substring(0, 20) + '...'])
         });
         
         // CRITICAL: Build complete initial structure with ALL crypto slots including multi-network ones
