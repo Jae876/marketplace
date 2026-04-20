@@ -30,10 +30,16 @@ export async function GET(req: NextRequest) {
     }
 
     // Use PostgreSQL if available for persistence on Vercel
-    let wallets = {};
+    let wallets: Record<string, any> = {};
     if (dbPostgres && process.env.DATABASE_URL) {
       console.log('[ADMIN-WALLETS-GET] Using PostgreSQL backend');
       wallets = await dbPostgres.getWalletConfig();
+      
+      // Safety check: if wallets is null/undefined/not an object, default to empty
+      if (!wallets || typeof wallets !== 'object' || Array.isArray(wallets)) {
+        console.log('[ADMIN-WALLETS-GET] WARNING: Invalid wallets data from PostgreSQL:', typeof wallets);
+        wallets = {};
+      }
     } else {
       console.log('[ADMIN-WALLETS-GET] Fallback: Using JSON backend');
       wallets = await db.getWalletConfig();
@@ -42,8 +48,8 @@ export async function GET(req: NextRequest) {
     // DEBUG: Log what we're returning
     console.log('[ADMIN-WALLETS-GET] Returning wallets:', {
       total_keys: Object.keys(wallets).length,
-      non_empty: Object.values(wallets).filter(v => v && typeof v === 'string' && v.trim()).length,
-      sample: Object.entries(wallets).slice(0, 3).map(([k, v]) => [k, typeof v, typeof v === 'string' ? v.substring(0, 20) : 'NOT_STRING'])
+      non_empty: Object.values(wallets).filter(v => v && typeof v === 'string' && (v as string).trim()).length,
+      sample: Object.entries(wallets).slice(0, 3).map(([k, v]) => [k, typeof v, typeof v === 'string' ? (v as string).substring(0, 20) : 'NOT_STRING'])
     });
     
     return NextResponse.json({ wallets }, {
@@ -91,13 +97,20 @@ export async function PUT(req: NextRequest) {
       }
       
       wallets = JSON.parse(bodyText);
-      const walletCount = Object.keys(wallets || {}).length;
-      const configuredCount = Object.values(wallets).filter(v => typeof v === 'string' && v.trim()).length;
       
-      console.log('[ADMIN-WALLETS-PUT] Parsed wallets:', {
+      // CRITICAL: Clean the wallets object - ensure all values are strings or empty
+      const cleanedWallets: Record<string, string> = {};
+      Object.entries(wallets).forEach(([key, value]) => {
+        cleanedWallets[key] = (typeof value === 'string' ? value : '').trim();
+      });
+      
+      const walletCount = Object.keys(cleanedWallets).length;
+      const configuredCount = Object.values(cleanedWallets).filter(v => v && v.trim()).length;
+      
+      console.log('[ADMIN-WALLETS-PUT] Parsed and cleaned wallets:', {
         total: walletCount,
         configured: configuredCount,
-        first_few_keys: Object.keys(wallets).slice(0, 5)
+        first_few_keys: Object.keys(cleanedWallets).slice(0, 5)
       });
     } catch (parseError: any) {
       console.error('[ADMIN-WALLETS-PUT] JSON parse error:', parseError);
@@ -108,7 +121,7 @@ export async function PUT(req: NextRequest) {
     }
 
     // Validate wallet format
-    if (!wallets || typeof wallets !== 'object') {
+    if (!cleanedWallets || typeof cleanedWallets !== 'object') {
       return NextResponse.json(
         { error: 'Invalid wallet data format' },
         { status: 400 }
@@ -118,8 +131,8 @@ export async function PUT(req: NextRequest) {
     try {
       // Use PostgreSQL if available - store complete wallet object (all 70 slots)
       if (dbPostgres && process.env.DATABASE_URL) {
-        console.log('[ADMIN-WALLETS-PUT] Saving complete wallet state to PostgreSQL');
-        await dbPostgres.updateWalletConfig(wallets);
+        console.log('[ADMIN-WALLETS-PUT] Saving cleaned wallet state to PostgreSQL');
+        await dbPostgres.updateWalletConfig(cleanedWallets);
         
         // Verify immediately what was saved
         const saved = await dbPostgres.getWalletConfig();
@@ -127,10 +140,10 @@ export async function PUT(req: NextRequest) {
         console.log('[ADMIN-WALLETS-PUT] Verification: PostgreSQL now has', savedCount, 'configured wallets');
       } else {
         console.log('[ADMIN-WALLETS-PUT] Fallback: Saving to JSON backend');
-        await db.updateWalletConfig(wallets);
+        await db.updateWalletConfig(cleanedWallets);
       }
 
-      const configuredCount = Object.values(wallets).filter(v => typeof v === 'string' && v.trim()).length;
+      const configuredCount = Object.values(cleanedWallets).filter(v => v && v.trim()).length;
       console.log(`[ADMIN-WALLETS-PUT] Success: saved ${configuredCount} configured wallets`);
     } catch (dbError: any) {
       console.error('[ADMIN-WALLETS-PUT] Database error:', dbError);
