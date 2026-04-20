@@ -199,7 +199,7 @@ export default function ChatBot() {
 
                 {/* Telegram */}
                 <a
-                  href="https://t.me/russianroulette"
+                  href="https://t.me/IN73LL1G3NC"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors group"
@@ -211,7 +211,7 @@ export default function ChatBot() {
 
                 {/* WhatsApp */}
                 <a
-                  href="https://wa.me/1234567890"
+                  href="https://wa.me/37060058376"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors group"
