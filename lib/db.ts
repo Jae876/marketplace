@@ -419,14 +419,23 @@ class Database {
     return true;
   }
 
-  // Wallet Configuration
+  // Wallet Configuration - CRITICAL: Use PostgreSQL (Neon) on Vercel for persistence
+  // JSON file-based storage is ONLY for local development
   getWalletConfig(): WalletConfig {
     return this.readFile(this.walletsFile, {});
   }
 
   updateWalletConfig(config: Partial<WalletConfig>): void {
     const current = this.getWalletConfig();
-    this.writeFile(this.walletsFile, { ...current, ...config });
+    const merged = { ...current, ...config };
+    
+    console.log('[DB-JSON] Updating wallet config:', {
+      keys: Object.keys(merged).length,
+      configured: Object.values(merged).filter(v => v && typeof v === 'string' && v.trim()).length,
+      environment: process.env.VERCEL ? 'VERCEL' : 'LOCAL'
+    });
+    
+    this.writeFile(this.walletsFile, merged);
   }
 
   // Referral methods - stubs for JSON database (referrals are PostgreSQL-only for production)
