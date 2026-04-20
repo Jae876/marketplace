@@ -160,7 +160,19 @@ export default function AdminPage() {
       });
       const data = await response.json();
       if (data.wallets) {
-        setWallets(data.wallets);
+        // CRITICAL: Merge fetched wallets with initial structure to preserve all 70 crypto slots
+        // This ensures that even if only 17 wallets are saved, all 70 keys exist in state
+        const initialStructure = SUPPORTED_CRYPTOS.reduce((acc, crypto) => {
+          acc[crypto.id] = '';
+          return acc;
+        }, {} as WalletConfig);
+        
+        // Merge: initial structure (all 70 with empty values) + fetched wallets (override with saved values)
+        const mergedWallets = { ...initialStructure, ...data.wallets };
+        setWallets(mergedWallets);
+        
+        const configuredCount = Object.values(mergedWallets).filter(v => v && v.trim()).length;
+        console.log(`[ADMIN-WALLETS] Fetched and merged wallets: ${configuredCount}/${SUPPORTED_CRYPTOS.length} configured`);
       }
     } catch (error) {
       console.error('Error fetching wallets:', error);
@@ -375,8 +387,17 @@ export default function AdminPage() {
     
     try {
       // Admin session is via httpOnly cookie, token not needed here
+      
+      // Only send non-empty wallets to database (filter out empty values)
+      const walletsToSave = Object.fromEntries(
+        Object.entries(wallets).filter(([_, value]) => value && value.trim())
+      );
 
-      console.log('[ADMIN] Saving wallets:', wallets);
+      console.log('[ADMIN] Saving wallets:', {
+        total: Object.keys(wallets).length,
+        configured: Object.keys(walletsToSave).length,
+        data: walletsToSave
+      });
 
       const response = await fetch('/api/admin/wallets', {
         method: 'PUT',
@@ -384,7 +405,7 @@ export default function AdminPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Send cookies with request
-        body: JSON.stringify(wallets),
+        body: JSON.stringify(walletsToSave),
       });
 
       // Read response as text first
@@ -409,7 +430,7 @@ export default function AdminPage() {
         return;
       }
 
-      setSuccess('Wallet addresses updated successfully!');
+      setSuccess(`✓ Wallet configuration saved! ${Object.keys(walletsToSave).length} wallets configured.`);
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       console.error('[ADMIN] Wallet save error:', err);
@@ -880,7 +901,7 @@ export default function AdminPage() {
 
             <div className="mt-8 p-4 bg-slate-900/30 rounded-lg border border-purple-700/20">
               <p className="text-xs text-gray-500 text-center">
-                Configured: <span className="text-purple-400 font-semibold">{Object.values(wallets).filter(v => v).length}</span> / <span className="text-gray-400">{SUPPORTED_CRYPTOS.length}</span> cryptocurrencies • All addresses are securely stored and used for payment processing only
+                Configured: <span className="text-purple-400 font-semibold">{Object.values(wallets).filter(v => v && v.trim()).length}</span> / <span className="text-gray-400">{SUPPORTED_CRYPTOS.length}</span> cryptocurrencies • All addresses are securely stored and used for payment processing only
               </p>
             </div>
 
