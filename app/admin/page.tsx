@@ -28,7 +28,15 @@ export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [wallets, setWallets] = useState<WalletConfig>(
     SUPPORTED_CRYPTOS.reduce((acc, crypto) => {
-      acc[crypto.id] = '';
+      if (crypto.networks && crypto.networks.length > 0) {
+        // Multi-network crypto: create key for each network
+        crypto.networks.forEach(network => {
+          acc[`${crypto.id}_${network.id}`] = '';
+        });
+      } else {
+        // Single network crypto: create basic key
+        acc[crypto.id] = '';
+      }
       return acc;
     }, {} as WalletConfig)
   );
@@ -160,19 +168,28 @@ export default function AdminPage() {
       });
       const data = await response.json();
       if (data.wallets) {
-        // CRITICAL: Merge fetched wallets with initial structure to preserve all 70 crypto slots
-        // This ensures that even if only 17 wallets are saved, all 70 keys exist in state
+        // CRITICAL: Build complete initial structure with ALL crypto slots including multi-network ones
         const initialStructure = SUPPORTED_CRYPTOS.reduce((acc, crypto) => {
-          acc[crypto.id] = '';
+          if (crypto.networks && crypto.networks.length > 0) {
+            // Multi-network crypto: create key for each network
+            crypto.networks.forEach(network => {
+              acc[`${crypto.id}_${network.id}`] = '';
+            });
+          } else {
+            // Single network crypto: create basic key
+            acc[crypto.id] = '';
+          }
           return acc;
         }, {} as WalletConfig);
         
-        // Merge: initial structure (all 70 with empty values) + fetched wallets (override with saved values)
+        console.log('[ADMIN-WALLETS] Initial structure has:', Object.keys(initialStructure).length, 'slots');
+        
+        // Merge: initial structure (all slots with empty values) + fetched wallets (override with saved values)
         const mergedWallets = { ...initialStructure, ...data.wallets };
         setWallets(mergedWallets);
         
         const configuredCount = Object.values(mergedWallets).filter(v => typeof v === 'string' && v.trim()).length;
-        console.log(`[ADMIN-WALLETS] Fetched and merged wallets: ${configuredCount}/${SUPPORTED_CRYPTOS.length} configured`);
+        console.log(`[ADMIN-WALLETS] Fetched and merged wallets: ${configuredCount} configured`);
       }
     } catch (error) {
       console.error('Error fetching wallets:', error);
