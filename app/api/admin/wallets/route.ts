@@ -108,7 +108,13 @@ export async function PUT(req: NextRequest) {
       // Use PostgreSQL if available for persistence on Vercel
       if (dbPostgres && process.env.DATABASE_URL) {
         console.log('[ADMIN-WALLETS-PUT] Saving to PostgreSQL backend');
+        console.log('[ADMIN-WALLETS-PUT] Wallet count before save:', Object.keys(wallets).length);
         await dbPostgres.updateWalletConfig(wallets);
+        console.log('[ADMIN-WALLETS-PUT] PostgreSQL save completed');
+        
+        // Verify what was saved
+        const verification = await dbPostgres.getWalletConfig();
+        console.log('[ADMIN-WALLETS-PUT] Verification - saved wallets count:', Object.keys(verification).length);
       } else {
         console.log('[ADMIN-WALLETS-PUT] Fallback: Saving to JSON backend');
         await db.updateWalletConfig(wallets);

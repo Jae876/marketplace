@@ -890,13 +890,25 @@ export class PostgresDatabase {
       // Merge new config with existing - preserve all previously saved wallets
       const mergedConfig = { ...currentConfig, ...config };
 
+      console.log('[NEON-WALLET] Saving merged config:', {
+        existing_keys: Object.keys(currentConfig).length,
+        new_keys: Object.keys(config).length,
+        merged_keys: Object.keys(mergedConfig).length,
+        sample: Object.entries(mergedConfig).slice(0, 3)
+      });
+
       if ((existing as any[]).length > 0) {
-        await sql`UPDATE wallet_config SET config = ${JSON.stringify(mergedConfig)}, "updatedAt" = NOW() WHERE id = 1`;
+        // Pass object directly to JSONB column - do NOT stringify
+        await sql`UPDATE wallet_config SET config = ${JSON.stringify(mergedConfig)}::jsonb, "updatedAt" = NOW() WHERE id = 1`;
       } else {
-        await sql`INSERT INTO wallet_config (id, config) VALUES (1, ${JSON.stringify(mergedConfig)})`;
+        // Pass object directly to JSONB column - do NOT stringify
+        await sql`INSERT INTO wallet_config (config) VALUES (${JSON.stringify(mergedConfig)}::jsonb)`;
       }
+      
+      console.log('[NEON-WALLET] Successfully saved config to PostgreSQL');
     } catch (error) {
       console.error('[NEON] Error updating wallet config:', error);
+      throw error;
     }
   }
 }
