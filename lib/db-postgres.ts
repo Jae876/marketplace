@@ -884,38 +884,27 @@ export class PostgresDatabase {
   async updateWalletConfig(config: Partial<WalletConfig>): Promise<void> {
     await initializeTables();
     try {
-      // Get existing config
-      const existing = await sql`SELECT config FROM wallet_config LIMIT 1`;
-      const currentConfig = ((existing as any[])[0]?.config) || {};
+      // CRITICAL: Replace entire config with what was sent
+      // Frontend sends ALL 70 wallet slots, so no merging needed
+      console.log('[NEON-WALLET] Received config with', Object.keys(config).length, 'slots');
       
-      console.log('[NEON-WALLET] Current config in DB:', {
-        keys: Object.keys(currentConfig || {}).length,
-        sample: Object.entries(currentConfig || {}).slice(0, 2)
-      });
-
-      // Merge: preserve existing + add new
-      const mergedConfig = { ...currentConfig, ...config };
+      const existing = await sql`SELECT id FROM wallet_config LIMIT 1`;
       
-      console.log('[NEON-WALLET] Merged config:', {
-        existing_keys: Object.keys(currentConfig || {}).length,
-        new_keys: Object.keys(config || {}).length,
-        merged_keys: Object.keys(mergedConfig).length,
-        merged_entries: Object.entries(mergedConfig).slice(0, 5)
-      });
-
       if ((existing as any[]).length > 0) {
-        // Update existing row - pass object directly, Neon handles serialization
-        await sql`UPDATE wallet_config SET config = ${mergedConfig}, "updatedAt" = NOW() WHERE id = 1`;
+        // Update: Replace entire config
+        await sql`UPDATE wallet_config SET config = ${ config }, "updatedAt" = NOW() WHERE id = 1`;
+        console.log('[NEON-WALLET] Updated existing row');
       } else {
-        // Insert new row
-        await sql`INSERT INTO wallet_config (config) VALUES (${mergedConfig})`;
+        // Insert: New config
+        await sql`INSERT INTO wallet_config (config) VALUES (${ config })`;
+        console.log('[NEON-WALLET] Inserted new row');
       }
       
-      // Verify immediately what was saved
+      // Verify what was actually saved
       const verify = await sql`SELECT config FROM wallet_config LIMIT 1`;
-      const savedConfig = ((verify as any[])[0]?.config) || {};
-      console.log('[NEON-WALLET] Verification - saved config keys:', Object.keys(savedConfig).length);
-      console.log('[NEON-WALLET] Verification - saved entries:', Object.entries(savedConfig).slice(0, 5));
+      const saved = ((verify as any[])[0]?.config) || {};
+      const savedConfigured = Object.values(saved).filter(v => typeof v === 'string' && (v as string).trim()).length;
+      console.log('[NEON-WALLET] Verification: saved config has', Object.keys(saved).length, 'slots,', savedConfigured, 'configured');
       
     } catch (error) {
       console.error('[NEON-WALLET] Error updating wallet config:', error);

@@ -81,7 +81,7 @@ export async function PUT(req: NextRequest) {
     let wallets;
     try {
       const bodyText = await req.text();
-      console.log('[ADMIN-WALLETS-PUT] Request body length:', bodyText.length, 'bytes');
+      console.log('[ADMIN-WALLETS-PUT] Request body size:', bodyText.length, 'bytes');
       
       if (!bodyText || bodyText.trim().length === 0) {
         return NextResponse.json(
@@ -92,12 +92,12 @@ export async function PUT(req: NextRequest) {
       
       wallets = JSON.parse(bodyText);
       const walletCount = Object.keys(wallets || {}).length;
-      const nonEmptyCount = Object.values(wallets).filter(v => v && typeof v === 'string' && v.trim()).length;
+      const configuredCount = Object.values(wallets).filter(v => typeof v === 'string' && v.trim()).length;
       
-      console.log('[ADMIN-WALLETS-PUT] Parsed request:', {
-        total_wallets: walletCount,
-        non_empty: nonEmptyCount,
-        sample: Object.entries(wallets).slice(0, 3)
+      console.log('[ADMIN-WALLETS-PUT] Parsed wallets:', {
+        total: walletCount,
+        configured: configuredCount,
+        first_few_keys: Object.keys(wallets).slice(0, 5)
       });
     } catch (parseError: any) {
       console.error('[ADMIN-WALLETS-PUT] JSON parse error:', parseError);
@@ -116,22 +116,22 @@ export async function PUT(req: NextRequest) {
     }
 
     try {
-      // Use PostgreSQL if available for persistence on Vercel
+      // Use PostgreSQL if available - store complete wallet object (all 70 slots)
       if (dbPostgres && process.env.DATABASE_URL) {
-        console.log('[ADMIN-WALLETS-PUT] Saving to PostgreSQL');
+        console.log('[ADMIN-WALLETS-PUT] Saving complete wallet state to PostgreSQL');
         await dbPostgres.updateWalletConfig(wallets);
         
-        // Verify immediately
-        const verification = await dbPostgres.getWalletConfig();
-        const savedCount = Object.values(verification).filter(v => v && typeof v === 'string' && v.trim()).length;
-        console.log('[ADMIN-WALLETS-PUT] Verification - now have', savedCount, 'wallets saved');
+        // Verify immediately what was saved
+        const saved = await dbPostgres.getWalletConfig();
+        const savedCount = Object.values(saved).filter(v => typeof v === 'string' && v.trim()).length;
+        console.log('[ADMIN-WALLETS-PUT] Verification: PostgreSQL now has', savedCount, 'configured wallets');
       } else {
         console.log('[ADMIN-WALLETS-PUT] Fallback: Saving to JSON backend');
         await db.updateWalletConfig(wallets);
       }
 
-      const configuredCount = Object.values(wallets).filter(v => v && typeof v === 'string' && v.trim()).length;
-      console.log(`[ADMIN-WALLETS-PUT] Successfully saved ${configuredCount} wallet addresses`);
+      const configuredCount = Object.values(wallets).filter(v => typeof v === 'string' && v.trim()).length;
+      console.log(`[ADMIN-WALLETS-PUT] Success: saved ${configuredCount} configured wallets`);
     } catch (dbError: any) {
       console.error('[ADMIN-WALLETS-PUT] Database error:', dbError);
       return NextResponse.json(
@@ -147,8 +147,7 @@ export async function PUT(req: NextRequest) {
       }
     });
   } catch (error: any) {
-    console.error('[ADMIN-WALLETS-PUT] Error:', error);
-    console.error('[ADMIN-WALLETS-PUT] Error stack:', error.stack);
+    console.error('[ADMIN-WALLETS-PUT] Unexpected error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { 

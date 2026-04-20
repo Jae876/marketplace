@@ -388,30 +388,28 @@ export default function AdminPage() {
     try {
       // Admin session is via httpOnly cookie, token not needed here
       
-      // Only send non-empty wallets to database (filter out empty values)
-      const walletsToSave = Object.fromEntries(
-        Object.entries(wallets).filter(([_, value]) => value && value.trim())
-      );
-
-      const configCount = Object.keys(walletsToSave).length;
-      console.log('[ADMIN] Saving wallets:', {
+      // CRITICAL: Send ALL 70 wallets (both empty and configured) to database
+      // This eliminates merging logic and prevents data loss
+      console.log('[ADMIN] Saving all wallets (full state):', {
         total_in_state: Object.keys(wallets).length,
-        configured_to_save: configCount,
-        wallet_keys: Object.keys(walletsToSave)
+        configured: Object.values(wallets).filter(v => typeof v === 'string' && v.trim()).length,
+        all_keys: Object.keys(wallets)
       });
 
+      const configCount = Object.values(wallets).filter(v => typeof v === 'string' && v.trim()).length;
       if (configCount === 0) {
         setError('Please configure at least one wallet before saving');
         return;
       }
 
+      // Send complete wallet state with all 70 slots
       const response = await fetch('/api/admin/wallets', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Send cookies with request
-        body: JSON.stringify(walletsToSave),
+        body: JSON.stringify(wallets), // Send all wallets, not just non-empty ones
       });
 
       // Read response as text first
@@ -436,14 +434,7 @@ export default function AdminPage() {
         return;
       }
 
-      // CRITICAL: Re-fetch wallets immediately to verify they were saved
-      console.log('[ADMIN] Save successful, re-fetching to verify...');
-      await fetchWallets();
-      
-      const verifiedCount = Object.values(wallets).filter(v => typeof v === 'string' && v.trim()).length;
-      console.log('[ADMIN] Verification complete. Wallets now configured:', verifiedCount);
-
-      setSuccess(`✓ Saved ${configCount} wallets. Total configured: ${verifiedCount}/70`);
+      setSuccess(`✓ Saved ${configCount}/70 wallets configured successfully!`);
       setTimeout(() => setSuccess(''), 5000);
     } catch (err: any) {
       console.error('[ADMIN] Wallet save error:', err);
