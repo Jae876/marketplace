@@ -40,6 +40,12 @@ export default function AdminPage() {
       return acc;
     }, {} as WalletConfig)
   );
+  
+  // Log initial state structure
+  useEffect(() => {
+    console.log('[ADMIN-INIT] Initial wallet state has', Object.keys(wallets).length, 'slots');
+    console.log('[ADMIN-INIT] First 10 keys:', Object.keys(wallets).slice(0, 10));
+  }, []);
   const [walletSearchTerm, setWalletSearchTerm] = useState('');
   const [regions, setRegions] = useState<string[]>(REGIONS);
   const [types, setTypes] = useState<string[]>([]);
@@ -168,6 +174,19 @@ export default function AdminPage() {
       });
       const data = await response.json();
       if (data.wallets) {
+        const fetchedWalletCount = Object.keys(data.wallets).length;
+        const fetchedConfigured = Object.values(data.wallets).filter(v => typeof v === 'string' && v.trim()).length;
+        
+        console.log('[ADMIN-FETCH-WALLETS] Received from API:', {
+          total_keys: fetchedWalletCount,
+          configured: fetchedConfigured,
+          first_5_keys: Object.keys(data.wallets).slice(0, 5),
+          sample_configured: Object.entries(data.wallets)
+            .filter(([k, v]) => typeof v === 'string' && v.trim())
+            .slice(0, 3)
+            .map(([k, v]) => [k, v.substring(0, 20) + '...'])
+        });
+        
         // CRITICAL: Build complete initial structure with ALL crypto slots including multi-network ones
         const initialStructure = SUPPORTED_CRYPTOS.reduce((acc, crypto) => {
           if (crypto.networks && crypto.networks.length > 0) {
@@ -182,14 +201,15 @@ export default function AdminPage() {
           return acc;
         }, {} as WalletConfig);
         
-        console.log('[ADMIN-WALLETS] Initial structure has:', Object.keys(initialStructure).length, 'slots');
+        console.log('[ADMIN-FETCH-WALLETS] Initial structure has:', Object.keys(initialStructure).length, 'slots');
         
         // Merge: initial structure (all slots with empty values) + fetched wallets (override with saved values)
         const mergedWallets = { ...initialStructure, ...data.wallets };
-        setWallets(mergedWallets);
         
-        const configuredCount = Object.values(mergedWallets).filter(v => typeof v === 'string' && v.trim()).length;
-        console.log(`[ADMIN-WALLETS] Fetched and merged wallets: ${configuredCount} configured`);
+        const mergedConfigured = Object.values(mergedWallets).filter(v => typeof v === 'string' && v.trim()).length;
+        console.log('[ADMIN-FETCH-WALLETS] After merge: total slots:', Object.keys(mergedWallets).length, 'configured:', mergedConfigured);
+        
+        setWallets(mergedWallets);
       }
     } catch (error) {
       console.error('Error fetching wallets:', error);
@@ -405,13 +425,16 @@ export default function AdminPage() {
     try {
       // Admin session is via httpOnly cookie, token not needed here
       
-      // CRITICAL: Send ALL 70 wallets (both empty and configured) to database
-      // This eliminates merging logic and prevents data loss
-      console.log('[ADMIN] Saving all wallets (full state):', {
-        total_in_state: Object.keys(wallets).length,
-        configured: Object.values(wallets).filter(v => typeof v === 'string' && v.trim()).length,
-        all_keys: Object.keys(wallets)
-      });
+      // DETAILED LOGGING: Check what's ACTUALLY in state before saving
+      const detailedLog = {
+        total_slots_in_state: Object.keys(wallets).length,
+        all_values: wallets,
+        configured_wallets: Object.entries(wallets)
+          .filter(([k, v]) => typeof v === 'string' && v.trim())
+          .map(([k, v]) => [k, v.substring(0, 30) + '...'])
+      };
+      
+      console.log('[ADMIN-WALLET-SAVE] State before sending to API:', detailedLog);
 
       const configCount = Object.values(wallets).filter(v => typeof v === 'string' && v.trim()).length;
       if (configCount === 0) {
@@ -419,17 +442,18 @@ export default function AdminPage() {
         return;
       }
 
-      // Send complete wallet state with all 70 slots
+      // CRITICAL: Send ALL wallets (full state with all 70+ slots) to database
+      console.log('[ADMIN-WALLET-SAVE] Sending complete wallet state with', Object.keys(wallets).length, 'slots');
+      
       const response = await fetch('/api/admin/wallets', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // Send cookies with request
-        body: JSON.stringify(wallets), // Send all wallets, not just non-empty ones
+        credentials: 'include',
+        body: JSON.stringify(wallets),
       });
 
-      // Read response as text first
       const text = await response.text();
       
       if (!text) {
@@ -451,7 +475,8 @@ export default function AdminPage() {
         return;
       }
 
-      setSuccess(`✓ Saved ${configCount}/70 wallets configured successfully!`);
+      console.log('[ADMIN-WALLET-SAVE] API response successful');
+      setSuccess(`✓ Saved ${configCount} wallets configured successfully!`);
       setTimeout(() => setSuccess(''), 5000);
     } catch (err: any) {
       console.error('[ADMIN] Wallet save error:', err);
