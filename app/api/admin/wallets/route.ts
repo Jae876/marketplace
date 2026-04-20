@@ -19,157 +19,97 @@ export const revalidate = 0; // Never cache wallet config
 
 export async function GET(req: NextRequest) {
   try {
-    console.log('[ADMIN-WALLETS-GET] Request received');
-    
-    // Verify admin session from httpOnly cookie
+    // Verify admin session
     if (!verifyAdminSession(req)) {
       return NextResponse.json(
-        { error: 'Unauthorized - invalid or missing admin session' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Use PostgreSQL if available for persistence on Vercel
-    let wallets: Record<string, any> = {};
+    // Get wallets from PostgreSQL
+    let wallets = {};
     if (dbPostgres && process.env.DATABASE_URL) {
-      console.log('[ADMIN-WALLETS-GET] Using PostgreSQL backend');
       wallets = await dbPostgres.getWalletConfig();
-      
-      // Safety check: if wallets is null/undefined/not an object, default to empty
-      if (!wallets || typeof wallets !== 'object' || Array.isArray(wallets)) {
-        console.log('[ADMIN-WALLETS-GET] WARNING: Invalid wallets data from PostgreSQL:', typeof wallets);
-        wallets = {};
-      }
     } else {
-      console.log('[ADMIN-WALLETS-GET] Fallback: Using JSON backend');
       wallets = await db.getWalletConfig();
     }
-
-    // DEBUG: Log what we're returning
-    console.log('[ADMIN-WALLETS-GET] Returning wallets:', {
-      total_keys: Object.keys(wallets).length,
-      non_empty: Object.values(wallets).filter(v => v && typeof v === 'string' && (v as string).trim()).length,
-      sample: Object.entries(wallets).slice(0, 3).map(([k, v]) => [k, typeof v, typeof v === 'string' ? (v as string).substring(0, 20) : 'NOT_STRING'])
-    });
     
     return NextResponse.json({ wallets }, {
       headers: {
-        'Content-Type': 'application/json',
         'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
       }
     });
   } catch (error: any) {
-    console.error('[ADMIN-WALLETS-GET] Error:', error);
+    console.error('[WALLETS-GET] Error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
-      { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      }
+      { status: 500 }
     );
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
-    console.log('[ADMIN-WALLETS-PUT] Request received');
-    
-    // Verify admin session from httpOnly cookie
+    // Verify admin session
     if (!verifyAdminSession(req)) {
       return NextResponse.json(
-        { error: 'Unauthorized - invalid or missing admin session' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    let wallets;
-    let cleanedWallets: Record<string, string> = {};
+    const bodyText = await req.text();
     
+    if (!bodyText || bodyText.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Empty request body' },
+        { status: 400 }
+      );
+    }
+    
+    let wallets;
     try {
-      const bodyText = await req.text();
-      console.log('[ADMIN-WALLETS-PUT] Request body size:', bodyText.length, 'bytes');
-      
-      if (!bodyText || bodyText.trim().length === 0) {
-        return NextResponse.json(
-          { error: 'Empty request body' },
-          { status: 400 }
-        );
-      }
-      
       wallets = JSON.parse(bodyText);
-      
-      // CRITICAL: Clean the wallets object - ensure all values are strings or empty
-      Object.entries(wallets).forEach(([key, value]) => {
-        cleanedWallets[key] = (typeof value === 'string' ? value : '').trim();
-      });
-      
-      const walletCount = Object.keys(cleanedWallets).length;
-      const configuredCount = Object.values(cleanedWallets).filter(v => v && v.trim()).length;
-      
-      console.log('[ADMIN-WALLETS-PUT] Parsed and cleaned wallets:', {
-        total: walletCount,
-        configured: configuredCount,
-        first_few_keys: Object.keys(cleanedWallets).slice(0, 5)
-      });
-    } catch (parseError: any) {
-      console.error('[ADMIN-WALLETS-PUT] JSON parse error:', parseError);
+    } catch (parseError) {
       return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
+        { error: 'Invalid JSON' },
         { status: 400 }
       );
     }
 
-    // Validate wallet format
-    if (!cleanedWallets || typeof cleanedWallets !== 'object') {
+    if (!wallets || typeof wallets !== 'object') {
       return NextResponse.json(
-        { error: 'Invalid wallet data format' },
+        { error: 'Invalid data format' },
         { status: 400 }
       );
     }
 
     try {
-      // Use PostgreSQL if available - store complete wallet object (all 70 slots)
+      // Save wallets to database
       if (dbPostgres && process.env.DATABASE_URL) {
-        console.log('[ADMIN-WALLETS-PUT] Saving cleaned wallet state to PostgreSQL');
-        await dbPostgres.updateWalletConfig(cleanedWallets);
-        
-        // Verify immediately what was saved
-        const saved = await dbPostgres.getWalletConfig();
-        const savedCount = Object.values(saved).filter(v => typeof v === 'string' && v.trim()).length;
-        console.log('[ADMIN-WALLETS-PUT] Verification: PostgreSQL now has', savedCount, 'configured wallets');
+        await dbPostgres.updateWalletConfig(wallets);
       } else {
-        console.log('[ADMIN-WALLETS-PUT] Fallback: Saving to JSON backend');
-        await db.updateWalletConfig(cleanedWallets);
+        await db.updateWalletConfig(wallets);
       }
 
-      const configuredCount = Object.values(cleanedWallets).filter(v => v && v.trim()).length;
-      console.log(`[ADMIN-WALLETS-PUT] Success: saved ${configuredCount} configured wallets`);
+      return NextResponse.json({ success: true }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+        }
+      });
     } catch (dbError: any) {
-      console.error('[ADMIN-WALLETS-PUT] Database error:', dbError);
+      console.error('[WALLETS-PUT] Database error:', dbError);
       return NextResponse.json(
-        { error: 'Failed to update wallet configuration: ' + (dbError.message || 'Unknown error') },
+        { error: 'Failed to save wallets' },
         { status: 500 }
       );
     }
-
-    return NextResponse.json({ success: true }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
-      }
-    });
   } catch (error: any) {
-    console.error('[ADMIN-WALLETS-PUT] Unexpected error:', error);
+    console.error('[WALLETS-PUT] Error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
-      { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      }
+      { status: 500 }
     );
   }
 }

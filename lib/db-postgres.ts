@@ -875,43 +875,18 @@ export class PostgresDatabase {
   async getWalletConfig(): Promise<WalletConfig> {
     await initializeTables();
     try {
-      const result = await sql`SELECT id, config FROM wallet_config ORDER BY id ASC LIMIT 1`;
-      
-      console.log('[NEON-WALLET-GET] Query executed, result type:', Array.isArray(result) ? 'array' : 'single');
+      const result = await sql`SELECT config FROM wallet_config WHERE id = 1 LIMIT 1`;
       
       if (!result || (Array.isArray(result) && result.length === 0)) {
-        console.log('[NEON-WALLET-GET] No rows found, returning empty config');
         return {};
       }
       
       const row = Array.isArray(result) ? result[0] : result;
+      const config = row?.config || {};
       
-      if (!row) {
-        console.log('[NEON-WALLET-GET] Row is null/undefined');
-        return {};
-      }
-      
-      const config = row.config;
-      
-      console.log('[NEON-WALLET-GET] Retrieved config:', {
-        type: typeof config,
-        isArray: Array.isArray(config),
-        isObject: typeof config === 'object',
-        hasKeys: typeof config === 'object' ? Object.keys(config).length : 0,
-        raw: config
-      });
-      
-      // Safety: ensure config is a valid object
-      if (typeof config === 'object' && !Array.isArray(config) && config !== null) {
-        const configKeys = Object.keys(config).length;
-        console.log('[NEON-WALLET-GET] SUCCESS: Returning config with', configKeys, 'keys');
-        return config as WalletConfig;
-      }
-      
-      console.log('[NEON-WALLET-GET] Config not valid object, returning empty');
-      return {};
+      return typeof config === 'object' && !Array.isArray(config) ? config as WalletConfig : {};
     } catch (error) {
-      console.error('[NEON-WALLET-GET] Error getting wallet config:', error);
+      console.error('[DB] Error getting wallet config:', error);
       return {};
     }
   }
@@ -919,62 +894,22 @@ export class PostgresDatabase {
   async updateWalletConfig(config: Partial<WalletConfig>): Promise<void> {
     await initializeTables();
     try {
-      // CRITICAL: Store complete wallet object (all slots)
-      console.log('[NEON-WALLET-UPDATE] Received config:', {
-        type: typeof config,
-        isArray: Array.isArray(config),
-        slotCount: Object.keys(config).length,
-        sampleKeys: Object.keys(config).slice(0, 5)
-      });
-      
-      // Ensure config is a plain object
+      // Store complete wallet object from admin
       const cleanConfig = { ...config };
       
-      // Check existing rows
-      const allRows = await sql`SELECT id FROM wallet_config`;
-      const rowCount = Array.isArray(allRows) ? allRows.length : 0;
-      console.log('[NEON-WALLET-UPDATE] Total rows in wallet_config:', rowCount);
+      // Check if row exists
+      const existing = await sql`SELECT id FROM wallet_config WHERE id = 1`;
       
-      if (rowCount === 0) {
-        // No rows exist, insert new one
-        console.log('[NEON-WALLET-UPDATE] Inserting new row with', Object.keys(cleanConfig).length, 'slots');
-        await sql`INSERT INTO wallet_config (config) VALUES (${cleanConfig})`;
-        console.log('[NEON-WALLET-UPDATE] Insert completed');
-      } else {
-        // Row(s) exist - update row id=1
-        console.log('[NEON-WALLET-UPDATE] Updating row id=1 with', Object.keys(cleanConfig).length, 'slots');
+      if (Array.isArray(existing) && existing.length > 0) {
+        // Update existing row
         await sql`UPDATE wallet_config SET config = ${cleanConfig}, "updatedAt" = NOW() WHERE id = 1`;
-        console.log('[NEON-WALLET-UPDATE] Update completed');
-        
-        // Clean up any extra rows (keep only id=1)
-        const extraRows = await sql`SELECT id FROM wallet_config WHERE id > 1`;
-        const extraCount = Array.isArray(extraRows) ? extraRows.length : 0;
-        if (extraCount > 0) {
-          console.log('[NEON-WALLET-UPDATE] Deleting', extraCount, 'extra rows');
-          await sql`DELETE FROM wallet_config WHERE id > 1`;
-        }
+      } else {
+        // Insert new row
+        await sql`INSERT INTO wallet_config (id, config) VALUES (1, ${cleanConfig})`;
       }
       
-      // Verify what was actually saved
-      const verify = await sql`SELECT id, config FROM wallet_config WHERE id = 1`;
-      const verifyRow = Array.isArray(verify) ? verify[0] : verify;
-      const saved = verifyRow?.config || {};
-      
-      console.log('[NEON-WALLET-UPDATE] VERIFICATION after save:', {
-        total_slots: Object.keys(saved).length,
-        configured: Object.values(saved).filter((v: any) => v && typeof v === 'string' && (v as string).trim()).length,
-        type: typeof saved,
-        sample_keys: Object.keys(saved).slice(0, 5)
-      });
-      
     } catch (error) {
-      console.error('[NEON-WALLET-UPDATE] Error updating wallet config:', error);
-      throw error;
-    }
-  }
-      
-    } catch (error) {
-      console.error('[NEON-WALLET-UPDATE] Error updating wallet config:', error);
+      console.error('[DB] Error updating wallet config:', error);
       throw error;
     }
   }

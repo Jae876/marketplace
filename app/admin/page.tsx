@@ -26,25 +26,11 @@ export default function AdminPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'products' | 'wallets' | 'orders' | 'giveaway'>('products');
   const [products, setProducts] = useState<Product[]>([]);
-  const [wallets, setWallets] = useState<WalletConfig>(
-    SUPPORTED_CRYPTOS.reduce((acc, crypto) => {
-      if (crypto.networks && crypto.networks.length > 0) {
-        // Multi-network crypto: create key for each network
-        crypto.networks.forEach(network => {
-          acc[`${crypto.id}_${network.id}`] = '';
-        });
-      } else {
-        // Single network crypto: create basic key
-        acc[crypto.id] = '';
-      }
-      return acc;
-    }, {} as WalletConfig)
-  );
+  const [wallets, setWallets] = useState<WalletConfig>({});
   
   // Log initial state structure
   useEffect(() => {
-    console.log('[ADMIN-INIT] Initial wallet state has', Object.keys(wallets).length, 'slots');
-    console.log('[ADMIN-INIT] First 10 keys:', Object.keys(wallets).slice(0, 10));
+    console.log('[ADMIN-INIT] Admin page initialized');
   }, []);
   const [walletSearchTerm, setWalletSearchTerm] = useState('');
   const [regions, setRegions] = useState<string[]>(REGIONS);
@@ -168,48 +154,17 @@ export default function AdminPage() {
 
   const fetchWallets = async () => {
     try {
-      // Admin session is via httpOnly cookie, no need for Authorization header
       const response = await fetch('/api/admin/wallets', {
-        credentials: 'include', // Send cookies with request
+        credentials: 'include',
       });
       const data = await response.json();
       if (data.wallets) {
-        const fetchedWalletCount = Object.keys(data.wallets).length;
-        const fetchedConfigured = Object.values(data.wallets).filter(v => typeof v === 'string' && v.trim()).length;
-        
-        console.log('[ADMIN-FETCH-WALLETS] Received from API:', {
-          total_keys: fetchedWalletCount,
-          configured: fetchedConfigured,
-          first_5_keys: Object.keys(data.wallets).slice(0, 5),
-          sample_configured: Object.entries(data.wallets)
-            .filter(([k, v]) => typeof v === 'string' && v.trim())
-            .slice(0, 3)
-            .map(([k, v]) => [k, (v as string).substring(0, 20) + '...'])
+        console.log('[ADMIN-FETCH-WALLETS] Fetched wallets:', {
+          total: Object.keys(data.wallets).length,
+          configured: Object.values(data.wallets).filter((v: any) => typeof v === 'string' && (v as string).trim()).length,
+          sample_keys: Object.keys(data.wallets).slice(0, 5)
         });
-        
-        // CRITICAL: Build complete initial structure with ALL crypto slots including multi-network ones
-        const initialStructure = SUPPORTED_CRYPTOS.reduce((acc, crypto) => {
-          if (crypto.networks && crypto.networks.length > 0) {
-            // Multi-network crypto: create key for each network
-            crypto.networks.forEach(network => {
-              acc[`${crypto.id}_${network.id}`] = '';
-            });
-          } else {
-            // Single network crypto: create basic key
-            acc[crypto.id] = '';
-          }
-          return acc;
-        }, {} as WalletConfig);
-        
-        console.log('[ADMIN-FETCH-WALLETS] Initial structure has:', Object.keys(initialStructure).length, 'slots');
-        
-        // Merge: initial structure (all slots with empty values) + fetched wallets (override with saved values)
-        const mergedWallets = { ...initialStructure, ...data.wallets };
-        
-        const mergedConfigured = Object.values(mergedWallets).filter(v => typeof v === 'string' && v.trim()).length;
-        console.log('[ADMIN-FETCH-WALLETS] After merge: total slots:', Object.keys(mergedWallets).length, 'configured:', mergedConfigured);
-        
-        setWallets(mergedWallets);
+        setWallets(data.wallets);
       }
     } catch (error) {
       console.error('Error fetching wallets:', error);
