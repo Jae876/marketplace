@@ -24,9 +24,11 @@ interface WalletConfig {
 
 export default function AdminPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'products' | 'wallets' | 'orders' | 'giveaway'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'wallets' | 'orders' | 'giveaway' | 'external_products'>('products');
   const [products, setProducts] = useState<Product[]>([]);
   const [wallets, setWallets] = useState<WalletConfig>({});
+  const [externalProducts, setExternalProducts] = useState<any[]>([]);
+  const [syncingExternalProducts, setSyncingExternalProducts] = useState(false);
   
   // Log initial state structure
   useEffect(() => {
@@ -168,6 +170,70 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error('Error fetching wallets:', error);
+    }
+  };
+
+  const fetchExternalProducts = async () => {
+    try {
+      const response = await fetch('/api/admin/sync-external-products', {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.external_products) {
+        setExternalProducts(data.external_products);
+      }
+    } catch (error) {
+      console.error('Error fetching external products:', error);
+    }
+  };
+
+  const syncExternalProducts = async () => {
+    try {
+      setSyncingExternalProducts(true);
+      setError('');
+      setSuccess('');
+
+      const response = await fetch('/api/admin/sync-external-products', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Sync failed');
+        return;
+      }
+
+      setSuccess(`✓ Synced ${data.synced} products from theowlet.store`);
+      await fetchExternalProducts();
+    } catch (error: any) {
+      setError(error.message || 'Sync failed');
+    } finally {
+      setSyncingExternalProducts(false);
+    }
+  };
+
+  const updateExternalProduct = async (productId: string, updates: any) => {
+    try {
+      const response = await fetch(`/api/admin/external-products/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(updates),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Update failed');
+        return;
+      }
+
+      setSuccess('✓ Product updated');
+      await fetchExternalProducts();
+    } catch (error: any) {
+      setError(error.message || 'Update failed');
     }
   };
 
@@ -579,7 +645,9 @@ export default function AdminPage() {
               Order Management
             </button>
             <button
-              onClick={() => setActiveTab('giveaway')}
+              onClick={() => {
+                setActiveTab('giveaway');
+              }}
               className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'giveaway'
                   ? 'border-purple-500 text-purple-400'
@@ -587,6 +655,19 @@ export default function AdminPage() {
               }`}
             >
               🎁 Giveaway
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('external_products');
+                fetchExternalProducts();
+              }}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'external_products'
+                  ? 'border-purple-500 text-purple-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
+              }`}
+            >
+              🔗 External Products
             </button>
           </nav>
         </div>
@@ -1178,6 +1259,90 @@ export default function AdminPage() {
               >
                 {giveawayLoading ? '⏳ Processing...' : '✕ Cancel & Reset Prices'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'external_products' && (
+          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl shadow-2xl p-8 border border-purple-700/30">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent mb-2">
+                🔗 External Products
+              </h2>
+              <p className="text-gray-400">Products synced from theowlet.store - Edit to customize, prices auto-update until manually changed</p>
+            </div>
+
+            {/* Sync Button */}
+            <div className="mb-8">
+              <button
+                onClick={syncExternalProducts}
+                disabled={syncingExternalProducts}
+                className={`px-6 py-3 rounded-lg font-bold text-white transition-all ${
+                  syncingExternalProducts
+                    ? 'bg-gray-600 cursor-not-allowed opacity-60'
+                    : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 hover:shadow-lg hover:shadow-blue-500/30'
+                }`}
+              >
+                {syncingExternalProducts ? '⏳ Syncing...' : '🔄 Sync Products from theowlet.store'}
+              </button>
+            </div>
+
+            {/* Products Table */}
+            <div className="overflow-x-auto">
+              {externalProducts.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <p>No external products yet. Click "Sync Products" to fetch from theowlet.store</p>
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-900/50 border-b border-purple-600/30">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-gray-300 font-semibold">Product Name</th>
+                      <th className="px-4 py-3 text-left text-gray-300 font-semibold">Price</th>
+                      <th className="px-4 py-3 text-left text-gray-300 font-semibold">Type</th>
+                      <th className="px-4 py-3 text-left text-gray-300 font-semibold">Region</th>
+                      <th className="px-4 py-3 text-left text-gray-300 font-semibold">Edited</th>
+                      <th className="px-4 py-3 text-center text-gray-300 font-semibold">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700">
+                    {externalProducts.map((product: any) => (
+                      <tr key={product.id} className="hover:bg-slate-900/30 transition-colors">
+                        <td className="px-4 py-3 text-gray-200">{product.name}</td>
+                        <td className="px-4 py-3 text-gray-200">${product.currentPrice.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-gray-400">{product.type}</td>
+                        <td className="px-4 py-3 text-gray-400">{product.region}</td>
+                        <td className="px-4 py-3">
+                          {product.isEdited ? (
+                            <span className="text-yellow-400 text-xs font-semibold">✓ Yes</span>
+                          ) : (
+                            <span className="text-gray-500 text-xs">No</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => {
+                              const newPrice = prompt('Enter new price:', product.currentPrice.toString());
+                              if (newPrice && !isNaN(parseFloat(newPrice))) {
+                                updateExternalProduct(product.id, { currentPrice: parseFloat(newPrice) });
+                              }
+                            }}
+                            className="text-blue-400 hover:text-blue-300 font-semibold transition-colors"
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="mt-8 p-4 bg-blue-900/30 border border-blue-600/30 rounded-lg">
+              <p className="text-sm text-blue-300">
+                <span className="font-semibold">ℹ Info:</span> External products sync automatically every 24 hours. Prices are auto-updated from the source until you manually edit them, then they stay locked.
+              </p>
             </div>
           </div>
         )}

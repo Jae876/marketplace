@@ -185,6 +185,29 @@ async function initializeTables() {
       console.log('[NEON] wallet_config init note:', initError.message);
     }
 
+    // Create external_products table for synced products from external sources
+    await sql`
+      CREATE TABLE IF NOT EXISTS external_products (
+        id VARCHAR(255) PRIMARY KEY,
+        source VARCHAR(255) NOT NULL,
+        "sourceId" VARCHAR(255),
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        "originalPrice" DECIMAL(18, 8) NOT NULL,
+        "currentPrice" DECIMAL(18, 8) NOT NULL,
+        region VARCHAR(255),
+        type VARCHAR(255),
+        size VARCHAR(255),
+        image TEXT,
+        "isEdited" BOOLEAN DEFAULT FALSE,
+        "editedFields" JSONB DEFAULT '{}'::jsonb,
+        "lastSynced" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "syncedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    console.log('[NEON] ✓ external_products table created/exists');
+
     // Create giveaway_state table
     await sql`
       CREATE TABLE IF NOT EXISTS giveaway_state (
@@ -888,6 +911,149 @@ export class PostgresDatabase {
     } catch (error) {
       console.error('[DB] Error getting wallet config:', error);
       return {};
+    }
+  }
+
+  async getExternalProducts(): Promise<any[]> {
+    await initializeTables();
+    try {
+      const result = await sql`
+        SELECT id, source, "sourceId", name, description, "originalPrice", "currentPrice", 
+               region, type, size, image, "isEdited", "editedFields", "lastSynced", "createdAt"
+        FROM external_products 
+        ORDER BY "lastSynced" DESC
+      `;
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error('[DB] Error getting external products:', error);
+      return [];
+    }
+  }
+
+  async getExternalProductById(id: string): Promise<any> {
+    await initializeTables();
+    try {
+      const result = await sql`
+        SELECT id, source, "sourceId", name, description, "originalPrice", "currentPrice", 
+               region, type, size, image, "isEdited", "editedFields", "lastSynced", "createdAt"
+        FROM external_products 
+        WHERE id = ${id}
+      `;
+      const rows = Array.isArray(result) ? result : [];
+      return rows[0] || null;
+    } catch (error) {
+      console.error('[DB] Error getting external product:', error);
+      return null;
+    }
+  }
+
+  async createExternalProduct(product: any): Promise<void> {
+    await initializeTables();
+    try {
+      const {
+        id, source, sourceId, name, description, originalPrice, currentPrice,
+        region, type, size, image
+      } = product;
+
+      await sql`
+        INSERT INTO external_products 
+        (id, source, "sourceId", name, description, "originalPrice", "currentPrice", 
+         region, type, size, image, "isEdited", "editedFields", "lastSynced")
+        VALUES (${id}, ${source}, ${sourceId}, ${name}, ${description}, ${originalPrice}, 
+                ${currentPrice}, ${region}, ${type}, ${size}, ${image}, false, '{}'::jsonb, NOW())
+      `;
+    } catch (error) {
+      console.error('[DB] Error creating external product:', error);
+      throw error;
+    }
+  }
+
+  async updateExternalProduct(id: string, updates: any): Promise<void> {
+    await initializeTables();
+    try {
+      const { name, description, currentPrice, region, type, size, image } = updates;
+      
+      // Track which fields were edited
+      const editedFields: Record<string, boolean> = {};
+      if (name !== undefined) editedFields['name'] = true;
+      if (description !== undefined) editedFields['description'] = true;
+      if (currentPrice !== undefined) editedFields['currentPrice'] = true;
+      if (region !== undefined) editedFields['region'] = true;
+      if (type !== undefined) editedFields['type'] = true;
+      if (size !== undefined) editedFields['size'] = true;
+      if (image !== undefined) editedFields['image'] = true;
+
+      await sql`
+        UPDATE external_products 
+        SET 
+          name = COALESCE(${name}, name),
+          description = COALESCE(${description}, description),
+          "currentPrice" = COALESCE(${currentPrice}, "currentPrice"),
+          region = COALESCE(${region}, region),
+          type = COALESCE(${type}, type),
+          size = COALESCE(${size}, size),
+          image = COALESCE(${image}, image),
+          "isEdited" = true,
+          "editedFields" = ${editedFields},
+          "syncedAt" = NOW()
+        WHERE id = ${id}
+      `;
+    } catch (error) {
+      console.error('[DB] Error updating external product:', error);
+      throw error;
+    }
+  }
+
+  async syncExternalProduct(sourceId: string, sourceData: any): Promise<void> {
+    await initializeTables();
+    try {
+      const existing = await sql`
+        SELECT id, "isEdited", "editedFields", "currentPrice", "originalPrice"
+        FROM external_products 
+        WHERE "sourceId" = ${sourceId}
+        LIMIT 1
+      `;
+
+      const existingProduct = Array.isArray(existing) ? existing[0] : null;
+
+      if (!existingProduct) {
+        // Create new product
+        await this.createExternalProduct(sourceData);
+      } else {
+        // Update existing - preserve edited fields and prices if manually edited
+        const editedFields = existingProduct.editedFields || {};
+        
+        const updates: any = {
+          description: editedFields['description'] ? undefined : sourceData.description,
+          region: editedFields['region'] ? undefined : sourceData.region,
+          type: editedFields['type'] ? undefined : sourceData.type,
+          size: editedFields['size'] ? undefined : sourceData.size,
+          image: editedFields['image'] ? undefined : sourceData.image,
+        };
+
+        // Only update price if NOT manually edited
+        if (!editedFields['currentPrice']) {
+          updates.currentPrice = sourceData.currentPrice;
+        }
+
+        // Always update originalPrice and lastSynced
+        await sql`
+          UPDATE external_products 
+          SET 
+            description = ${updates.description || null},
+            region = ${updates.region || null},
+            type = ${updates.type || null},
+            size = ${updates.size || null},
+            image = ${updates.image || null},
+            "currentPrice" = ${updates.currentPrice || existingProduct.currentPrice},
+            "originalPrice" = ${sourceData.originalPrice},
+            "lastSynced" = NOW()
+          WHERE "sourceId" = ${sourceId}
+        `;
+      }
+    } catch (error) {
+      console.error('[DB] Error syncing external product:', error);
+      throw error;
     }
   }
 

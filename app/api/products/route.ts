@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { dbPostgres } from '@/lib/db-postgres';
 import { verifyToken } from '@/lib/auth';
 
 export const runtime = 'nodejs';
@@ -55,6 +56,35 @@ export async function GET(req: NextRequest) {
 
     let products = await db.getAllProducts();
     console.log('[PRODUCTS] Total products from database:', products.length);
+
+    // Fetch external products (synced from third-party sources)
+    let externalProducts = [];
+    try {
+      externalProducts = await dbPostgres.getExternalProducts();
+      console.log('[PRODUCTS] Total external products:', externalProducts.length);
+      
+      // Convert external products to standard product format
+      externalProducts = externalProducts.map((ep: any) => ({
+        id: ep.id,
+        name: ep.name,
+        description: ep.description,
+        price: parseFloat(ep.currentPrice),
+        region: ep.region,
+        type: ep.type,
+        size: ep.size,
+        image: ep.image,
+        source: 'external',
+        sourceId: ep.sourceId,
+        isEdited: ep.isEdited,
+        createdAt: ep.createdAt
+      }));
+    } catch (externalError) {
+      console.warn('[PRODUCTS] Warning: Could not fetch external products:', externalError);
+    }
+
+    // Combine products - your products + external products
+    products = [...products, ...externalProducts];
+    console.log('[PRODUCTS] Total combined products:', products.length);
 
     // Check if there's an active giveaway
     const activeGiveaway = await db.getActiveGiveaway();
