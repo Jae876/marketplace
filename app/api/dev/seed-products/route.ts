@@ -112,29 +112,29 @@ export async function POST(req: NextRequest) {
       { name: 'Twitch Channel - Affiliate', description: 'Twitch affiliate channel', price: 45000, region: 'Worldwide', type: 'Twitch Channel', size: 'Affiliate' },
       { name: 'Discord Server Setup', description: 'Professional Discord server setup', price: 25000, region: 'Worldwide', type: 'Server Setup', size: 'Full Setup' },
       { name: 'Amazon Prime Account', description: 'Amazon Prime membership', price: 15000, region: 'Worldwide', type: 'Shopping', size: '1 year' },
-      { name: 'Email Bundle - Format UID|PASS|2FA', price: 7.99, category: 'Email', desc: 'Email with credentials in specified format' },
+      { name: 'Email Bundle - Format UID|PASS|2FA', description: 'Email with credentials in specified format', price: 7.99, region: 'Worldwide', type: 'Email', size: '1 account' },
       
       // TikTok
-      { name: 'TikTok Account - Verified', price: 5.99, category: 'Social Media', desc: 'Verified TikTok account' },
-      { name: 'TikTok Account - With Followers', price: 29.99, category: 'Social Media', desc: 'TikTok account with followers' },
+      { name: 'TikTok Account - Verified', description: 'Verified TikTok account', price: 5.99, region: 'Worldwide', type: 'TikTok Account', size: '1 account' },
+      { name: 'TikTok Account - With Followers', description: 'TikTok account with followers', price: 29.99, region: 'Worldwide', type: 'TikTok Account', size: 'With followers' },
       
       // Streaming
-      { name: 'Netflix Account - 1 Month', price: 8.99, category: 'Streaming', desc: '1 month Netflix access' },
-      { name: 'Netflix Account - 3 Months', price: 24.99, category: 'Streaming', desc: '3 months Netflix access' },
-      { name: 'Spotify Premium - 1 Month', price: 9.99, category: 'Streaming', desc: 'Spotify premium monthly' },
+      { name: 'Netflix Account - 1 Month', description: '1 month Netflix access', price: 8.99, region: 'Worldwide', type: 'Streaming', size: '1 month' },
+      { name: 'Netflix Account - 3 Months', description: '3 months Netflix access', price: 24.99, region: 'Worldwide', type: 'Streaming', size: '3 months' },
+      { name: 'Spotify Premium - 1 Month', description: 'Spotify premium monthly', price: 9.99, region: 'Worldwide', type: 'Music', size: '1 month' },
       
       // Gaming
-      { name: 'Steam Account - Verified', price: 12.99, category: 'Gaming', desc: 'Verified Steam account' },
-      { name: 'PlayStation Network Account', price: 14.99, category: 'Gaming', desc: 'PSN account with access' },
-      { name: 'Xbox Game Pass - 1 Month', price: 11.99, category: 'Gaming', desc: 'Xbox Game Pass subscription' },
+      { name: 'Steam Account - Verified', description: 'Verified Steam account', price: 12.99, region: 'Worldwide', type: 'Gaming', size: '1 account' },
+      { name: 'PlayStation Network Account', description: 'PSN account with access', price: 14.99, region: 'Worldwide', type: 'Gaming', size: '1 account' },
+      { name: 'Xbox Game Pass - 1 Month', description: 'Xbox Game Pass subscription', price: 11.99, region: 'Worldwide', type: 'Gaming', size: '1 month' },
       
       // Design & Creative
-      { name: 'Adobe Creative Cloud - 1 Month', price: 19.99, category: 'Software', desc: 'Adobe CC full access 1 month' },
-      { name: 'Canva Pro - 3 Months', price: 17.99, category: 'Software', desc: 'Canva Pro subscription 3 months' },
+      { name: 'Adobe Creative Cloud - 1 Month', description: 'Adobe CC full access 1 month', price: 19.99, region: 'Worldwide', type: 'Software', size: '1 month' },
+      { name: 'Canva Pro - 3 Months', description: 'Canva Pro subscription 3 months', price: 17.99, region: 'Worldwide', type: 'Software', size: '3 months' },
       
       // Dating & Social
-      { name: 'Facebook Dating Setup', price: 9.99, category: 'Facebook Dating', desc: 'Facebook Dating account setup' },
-      { name: 'Tinder Plus - 1 Month', price: 13.99, category: 'Social Media', desc: 'Tinder Plus monthly' },
+      { name: 'Facebook Dating Setup', description: 'Facebook Dating account setup', price: 9.99, region: 'Worldwide', type: 'Dating Account', size: '1 account' },
+      { name: 'Tinder Plus - 1 Month', description: 'Tinder Plus monthly', price: 13.99, region: 'Worldwide', type: 'Dating Account', size: '1 month' },
     ];
 
     let createdCount = 0;
@@ -144,14 +144,14 @@ export async function POST(req: NextRequest) {
         // Create as INTERNAL product so it works with existing admin flow
         const newProduct = {
           id: generateId(),
-          name: product.name,
-          description: product.description,
-          price: product.price, // Use price as-is (already in correct currency)
-          region: product.region,
-          type: product.type,
-          size: product.size,
+          name: product.name || 'Unnamed Product',
+          description: product.description || '',
+          price: product.price || 0,
+          region: product.region || 'Worldwide',
+          type: product.type || 'Product',
+          size: product.size || '',
           image: `https://images.unsplash.com/photo-1516321318423-f06f70d504d0?w=400&h=300&fit=crop&q=80`,
-          createdAt: new Date()
+          createdAt: new Date().toISOString()
         };
 
         await db.createProduct(newProduct);
