@@ -8,83 +8,121 @@ interface ScrapedProduct {
 }
 
 /**
- * Parse HTML and extract product information using regex and string methods
+ * Parse HTML and extract product information using multiple strategies
  */
 function parseProductsFromHTML(html: string): ScrapedProduct[] {
   const products: ScrapedProduct[] = [];
 
   try {
-    // Extract product data using regex patterns
-    // Look for common product markup patterns
+    // Strategy 1: Look for product containers with common e-commerce patterns
+    // Match divs that contain product price and add buttons
+    const productContainers = html.match(/<div[^>]*class="[^"]*product[^"]*"[^>]*>[\s\S]*?<\/div>/gi) || [];
     
-    // Pattern 1: JSON-LD structured data
-    const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
-    if (jsonLdMatch) {
-      jsonLdMatch.forEach((match) => {
-        try {
-          const jsonStr = match.replace(/<[^>]*>/g, '');
-          const jsonData = JSON.parse(jsonStr);
-          
-          if (jsonData['@type'] === 'Product' || (Array.isArray(jsonData) && jsonData[0]?.['@type'] === 'Product')) {
-            const productsData = Array.isArray(jsonData) ? jsonData : [jsonData];
-            
-            productsData.forEach((item: any, index: number) => {
-              if (item.name && item.offers?.price) {
-                products.push({
-                  sourceId: `theowlet_json_${index}_${Date.now()}`,
-                  name: item.name,
-                  description: item.description || '',
-                  price: parseFloat(item.offers.price) || 0,
-                  image: item.image,
-                  category: item.category || 'digital'
-                });
-              }
-            });
-          }
-        } catch (jsonError) {
-          console.warn('[SCRAPER] Error parsing JSON-LD:', jsonError);
-        }
-      });
-    }
+    console.log('[SCRAPER] Found', productContainers.length, 'product containers');
 
-    // Pattern 2: Look for product divs/cards with data attributes
-    const productCardRegex = /class="[^"]*product[^"]*"[\s\S]*?<\/(?:div|article)>/gi;
-    const matches = html.matchAll(productCardRegex);
-
-    for (const match of matches) {
+    productContainers.forEach((container, index) => {
       try {
-        const cardHTML = match[0];
-        
-        // Extract name
-        const nameMatch = cardHTML.match(/<h[2-4][^>]*>([^<]+)<\/h[2-4]>/);
-        const name = nameMatch ? nameMatch[1].trim() : '';
+        // Extract product name/title
+        let nameMatch = container.match(/<h[2-4][^>]*>([^<]+)<\/h[2-4]>/i);
+        let name = nameMatch ? nameMatch[1].trim() : '';
 
-        // Extract price
-        const priceMatch = cardHTML.match(/\$?([\d,.]+)/);
-        const price = priceMatch ? parseFloat(priceMatch[1].replace(/,/g, '')) : 0;
+        // Try alternate name patterns
+        if (!name) {
+          nameMatch = container.match(/title="([^"]*)"/i);
+          name = nameMatch ? nameMatch[1].trim() : '';
+        }
+        if (!name) {
+          nameMatch = container.match(/>([^<]{5,100})<\/[ab]/i);
+          name = nameMatch ? nameMatch[1].trim().substring(0, 100) : '';
+        }
 
-        // Extract image
-        const imageMatch = cardHTML.match(/src="([^"]*\.(?:jpg|jpeg|png|gif|webp))"/i);
-        const image = imageMatch ? imageMatch[1] : undefined;
+        // Extract price (look for currency symbols and numbers)
+        let priceMatch = container.match(/[₦$€£¥][\s]*([\d,]+(?:\.?\d{0,2})?)/i);
+        let price = 0;
+        if (priceMatch) {
+          price = parseFloat(priceMatch[1].replace(/,/g, ''));
+        }
+
+        // Fallback: look for standalone numbers that look like prices
+        if (price === 0 || isNaN(price)) {
+          priceMatch = container.match(/([\d]{1,6}(?:[\.,]\d{0,2})?)/);
+          if (priceMatch) {
+            price = parseFloat(priceMatch[1].replace(/,/g, '.'));
+          }
+        }
 
         // Extract description
-        const descMatch = cardHTML.match(/<p[^>]*>([^<]+)<\/p>/);
-        const description = descMatch ? descMatch[1].trim() : '';
+        let descMatch = container.match(/<p[^>]*>([^<]+)<\/p>/i);
+        let description = descMatch ? descMatch[1].trim() : '';
 
-        if (name && price > 0) {
+        // Try alternate description patterns
+        if (!description) {
+          descMatch = container.match(/Format:([^<]*)</i);
+          description = descMatch ? descMatch[1].trim() : '';
+        }
+
+        // Extract image
+        let imageMatch = container.match(/src="([^"]*\.(?:jpg|jpeg|png|gif|webp))"/i);
+        let image = imageMatch ? imageMatch[1] : undefined;
+
+        // Extract category from container classes or structure
+        let category = 'digital';
+        const categoryMatch = container.match(/class="[^"]*category[^"]*"[^>]*>([^<]+)/i);
+        if (categoryMatch) {
+          category = categoryMatch[1].toLowerCase().substring(0, 50);
+        }
+
+        // Only add if we have at least a name and price
+        if (name && name.length > 2 && price > 0) {
           products.push({
-            sourceId: `theowlet_card_${Date.now()}_${Math.random()}`,
-            name,
-            description,
-            price,
-            image,
-            category: 'digital'
+            sourceId: `theowlet_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+            name: name.substring(0, 255),
+            description: description.substring(0, 1000),
+            price: price,
+            image: image,
+            category: category
           });
         }
-      } catch (matchError) {
-        console.warn('[SCRAPER] Error parsing product card:', matchError);
+      } catch (containerError) {
+        console.warn('[SCRAPER] Error parsing product container:', containerError);
+      }
+    });
+
+    // Strategy 2: Look for price patterns with associated text
+    if (products.length === 0) {
+      console.log('[SCRAPER] Trying alternative extraction patterns');
+      
+      // Look for price followed by product name pattern
+      const priceProductRegex = /[₦$€£¥][\s]*([\d,]+(?:\.?\d{0,2})?)[^<]*?<[^>]*>([^<]{5,150})</gi;
+      let match;
+      
+      while ((match = priceProductRegex.exec(html)) !== null && products.length < 100) {
+        try {
+          const price = parseFloat(match[1].replace(/,/g, ''));
+          const name = match[2].trim().substring(0, 255);
+          
+          if (price > 0 && name.length > 2) {
+            products.push({
+              sourceId: `theowlet_alt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              name: name,
+              description: '',
+              price: price,
+              image: undefined,
+              category: 'digital'
+            });
+          }
+        } catch (e) {
+          // Continue on error
+        }
       }
     }
+
+    // Remove duplicates
+    const uniqueProducts = Array.from(
+      new Map(products.map(p => [p.name.toLowerCase(), p])).values()
+    );
+
+    return uniqueProducts;
   } catch (error) {
     console.warn('[SCRAPER] Error in product parsing:', error);
   }
@@ -93,28 +131,83 @@ function parseProductsFromHTML(html: string): ScrapedProduct[] {
 }
 
 /**
- * Scrape products from theowlet.store
+ * Scrape products from theowlet.store by fetching all category pages
  */
 export async function scrapeTheOwletProducts(): Promise<ScrapedProduct[]> {
   try {
-    const url = 'https://theowlet.store';
-    console.log('[SCRAPER] Fetching products from:', url);
+    const allProducts: ScrapedProduct[] = [];
+    const baseUrl = 'https://theowlet.store';
+    
+    console.log('[SCRAPER] Starting to scrape theowlet.store');
 
-    const response = await fetch(url, {
+    // Try to fetch the main page first to find categories
+    const mainResponse = await fetch(baseUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       }
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: Failed to fetch ${url}`);
+    if (!mainResponse.ok) {
+      console.log('[SCRAPER] Main page fetch failed, trying direct product extraction');
+      return [];
     }
 
-    const html = await response.text();
+    const html = await mainResponse.text();
+    
+    // Try to extract products directly from main page
     const products = parseProductsFromHTML(html);
+    
+    if (products.length > 0) {
+      console.log('[SCRAPER] Extracted', products.length, 'products from main page');
+      return products;
+    }
 
-    console.log('[SCRAPER] Successfully scraped', products.length, 'products');
-    return products;
+    // If no products found, try extracting category URLs and scraping each
+    console.log('[SCRAPER] No products found on main page, attempting category extraction');
+    
+    // Look for category links in the sidebar
+    const categoryRegex = /href="([^"]*\/category\/[^"]*|[^"]*\/shop\/[^"]*|[^"]*shop[^"]*)"[^>]*>([^<]+)</gi;
+    const categories = new Set<string>();
+    let categoryMatch;
+    
+    while ((categoryMatch = categoryRegex.exec(html)) !== null) {
+      let url = categoryMatch[1];
+      if (url.startsWith('/')) {
+        url = baseUrl + url;
+      } else if (!url.startsWith('http')) {
+        url = baseUrl + '/' + url;
+      }
+      categories.add(url);
+    }
+
+    console.log('[SCRAPER] Found', categories.size, 'categories');
+
+    // Scrape each category (limit to first 5 to avoid too many requests)
+    let categoryCount = 0;
+    for (const categoryUrl of Array.from(categories).slice(0, 5)) {
+      if (categoryCount >= 3) break; // Limit category scraping
+      
+      try {
+        console.log('[SCRAPER] Scraping category:', categoryUrl);
+        const categoryResponse = await fetch(categoryUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+
+        if (categoryResponse.ok) {
+          const categoryHtml = await categoryResponse.text();
+          const categoryProducts = parseProductsFromHTML(categoryHtml);
+          allProducts.push(...categoryProducts);
+          categoryCount++;
+        }
+      } catch (catError) {
+        console.warn('[SCRAPER] Error scraping category:', catError);
+      }
+    }
+
+    console.log('[SCRAPER] Successfully scraped', allProducts.length, 'products total');
+    return allProducts;
   } catch (error) {
     console.error('[SCRAPER] Error scraping theowlet.store:', error);
     return [];
