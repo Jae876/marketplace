@@ -18,30 +18,26 @@ const sql = neon(connectionString);
  */
 export async function DELETE(req: NextRequest) {
   try {
-    console.log('[CLEANUP] Starting cleanup...');
+    console.log('[CLEANUP] Starting full cleanup...');
     
-    // Delete all external products from theowlet.store sync
+    // Delete ALL products to start fresh
     try {
-      await sql`DELETE FROM external_products WHERE source = 'theowlet.store'`;
-      console.log('[CLEANUP] Deleted external products');
+      const result = await sql`DELETE FROM products`;
+      console.log('[CLEANUP] Deleted all internal products');
     } catch (e) {
-      console.log('[CLEANUP] No external products to delete');
+      console.log('[CLEANUP] Error deleting products:', e);
     }
 
-    // Delete products that were from old broken seed (with very low prices like $0.10-$0.20)
+    // Delete all external products
     try {
-      const result = await sql`
-        DELETE FROM products 
-        WHERE price < 1 
-        AND name IN ('Tinder Plus - 1 Month', 'Facebook Dating Setup', 'Canva Pro - 3 Months', 'Adobe Creative Cloud - 1 Month', 'Xbox Game Pass - 1 Month')
-      `;
-      console.log('[CLEANUP] Deleted low-priced test products');
+      await sql`DELETE FROM external_products`;
+      console.log('[CLEANUP] Deleted all external products');
     } catch (e) {
-      console.log('[CLEANUP] No low-priced products to delete');
+      console.log('[CLEANUP] Error deleting external products:', e);
     }
 
     return NextResponse.json({
-      message: 'Cleanup complete',
+      message: 'Cleanup complete - all products deleted',
       status: 'success'
     });
   } catch (error: any) {
